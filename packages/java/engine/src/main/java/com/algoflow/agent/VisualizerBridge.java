@@ -9,4 +9,6 @@ public class VisualizerBridge {
     public static Consumer<Object> clearListener;
     public static Consumer<String> logListener;
     public static BiConsumer<Object, Object[]> removeListener;
+    public static java.util.function.Consumer<Object> iteratorNextListener;
+    public static BiConsumer<Object, Object> iteratorCreatedListener;
 }

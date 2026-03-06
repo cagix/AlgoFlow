@@ -68,15 +68,15 @@ public class VisualizerRegistry {
         _visualizers.add(visualizer.getCommander());
     }
     
-    private static final ThreadLocal<Boolean> _processing = ThreadLocal.withInitial(() -> Boolean.FALSE);
+    private static volatile boolean _processing = false;
     
     public static void onArrayGet(Object array, Object[] args) {
-        if (_processing.get()) return;
-        _processing.set(Boolean.TRUE);
+        if (_processing) return;
+        _processing = true;
         try {
             doArrayGet(array, args);
         } finally {
-            _processing.set(Boolean.FALSE);
+            _processing = false;
         }
     }
     
@@ -124,12 +124,12 @@ public class VisualizerRegistry {
     }
     
     public static void onArraySet(Object array, Object[] args) {
-        if (_processing.get()) return;
-        _processing.set(Boolean.TRUE);
+        if (_processing) return;
+        _processing = true;
         try {
             doArraySet(array, args);
         } finally {
-            _processing.set(Boolean.FALSE);
+            _processing = false;
         }
     }
     
@@ -177,67 +177,99 @@ public class VisualizerRegistry {
     }
     
     public static void onGet(Object object, Object[] args) {
-        if (_processing.get()) return;
-        _processing.set(Boolean.TRUE);
+        if (_processing) return;
+        _processing = true;
         try {
             ListVisualizer visualizer = _objectToVisualizer.computeIfAbsent(object, VisualizerRegistry::findVisualizer);
             if (visualizer != null) {
                 visualizer.onGet(args);
             }
         } finally {
-            _processing.set(Boolean.FALSE);
+            _processing = false;
         }
     }
     
     public static void onSet(Object object, Object[] args) {
-        if (_processing.get()) return;
-        _processing.set(Boolean.TRUE);
+        if (_processing) return;
+        _processing = true;
         try {
             ListVisualizer visualizer = _objectToVisualizer.computeIfAbsent(object, VisualizerRegistry::findVisualizer);
             if (visualizer != null) {
                 visualizer.onSet(args);
             }
         } finally {
-            _processing.set(Boolean.FALSE);
+            _processing = false;
         }
     }
 
     public static void onAdd(Object object, Object[] args) {
-        if (_processing.get()) return;
-        _processing.set(Boolean.TRUE);
+        if (_processing) return;
+        _processing = true;
         try {
             ListVisualizer visualizer = _objectToVisualizer.get(object);
             if (visualizer != null) {
                 visualizer.onAdd(args);
             }
         } finally {
-            _processing.set(Boolean.FALSE);
+            _processing = false;
         }
     }
 
     public static void onRemove(Object object, Object[] args) {
-        if (_processing.get()) return;
-        _processing.set(Boolean.TRUE);
+        if (_processing) return;
+        _processing = true;
         try {
             ListVisualizer visualizer = _objectToVisualizer.get(object);
             if (visualizer != null) {
                 visualizer.onRemove(args);
             }
         } finally {
-            _processing.set(Boolean.FALSE);
+            _processing = false;
         }
     }
 
     public static void onClear(Object object) {
-        if (_processing.get()) return;
-        _processing.set(Boolean.TRUE);
+        if (_processing) return;
+        _processing = true;
         try {
             ListVisualizer visualizer = _objectToVisualizer.get(object);
             if (visualizer != null) {
                 visualizer.onClear();
             }
         } finally {
-            _processing.set(Boolean.FALSE);
+            _processing = false;
+        }
+    }
+
+    private static final IdentityHashMap<Object, ListVisualizer> _iteratorToVisualizer = new IdentityHashMap<>();
+    private static final IdentityHashMap<Object, int[]> _iteratorIndex = new IdentityHashMap<>();
+
+    public static void onIteratorCreated(Object collection, Object iterator) {
+        if (_processing) return;
+        _processing = true;
+        try {
+            ListVisualizer vis = _objectToVisualizer.get(collection);
+            if (vis != null) {
+                _iteratorToVisualizer.put(iterator, vis);
+                _iteratorIndex.put(iterator, new int[]{0});
+            }
+        } finally {
+            _processing = false;
+        }
+    }
+
+    public static void onIteratorNext(Object iterator) {
+        if (_processing) return;
+        _processing = true;
+        try {
+            ListVisualizer vis = _iteratorToVisualizer.get(iterator);
+            if (vis != null) {
+                int[] idx = _iteratorIndex.get(iterator);
+                vis.onGet(new Object[]{idx[0]});
+                idx[0]++;
+            }
+        } finally {
+            _processing = false;
         }
     }
 

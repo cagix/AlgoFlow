@@ -70,6 +70,17 @@ public class VisualizerAgent {
         removeListener.setAccessible(true);
         removeListener.set(null, onRemove);
 
+        BiConsumer<Object, Object> onIteratorCreated = VisualizerRegistry::onIteratorCreated;
+        Consumer<Object> onIteratorNext = VisualizerRegistry::onIteratorNext;
+
+        Field iteratorNextListenerField = bootBridge.getField("iteratorNextListener");
+        iteratorNextListenerField.setAccessible(true);
+        iteratorNextListenerField.set(null, onIteratorNext);
+
+        Field iteratorCreatedListenerField = bootBridge.getField("iteratorCreatedListener");
+        iteratorCreatedListenerField.setAccessible(true);
+        iteratorCreatedListenerField.set(null, onIteratorCreated);
+
         new AgentBuilder.Default()
                 .disableClassFormatChanges()
                 .with(RETRANSFORMATION)
@@ -133,6 +144,24 @@ public class VisualizerAgent {
                     return builder
                             .visit(Advice.to(PrintStreamInterceptor.class)
                                     .on(named("println").and(takesArguments(String.class))));
+                })
+                .type(ElementMatchers.isSubTypeOf(java.util.Iterator.class)
+                        .and(nameStartsWith("java.util.")))
+                .transform((builder, type, classLoader, module, protectionDomain) -> {
+                    System.out.println("[VisualizerAgent] Transforming Iterator: " + type.getName());
+                    return builder
+                            .visit(Advice.to(IteratorInterceptor.NextInterceptor.class)
+                                    .on(named("next").and(takesArguments(0))));
+                })
+                .type(ElementMatchers.is(java.util.ArrayList.class)
+                        .or(ElementMatchers.is(LinkedList.class))
+                        .or(ElementMatchers.is(java.util.ArrayDeque.class))
+                        .or(ElementMatchers.is(java.util.PriorityQueue.class)))
+                .transform((builder, type, classLoader, module, protectionDomain) -> {
+                    System.out.println("[VisualizerAgent] Transforming iterator() on: " + type.getName());
+                    return builder
+                            .visit(Advice.to(IteratorInterceptor.CreatedInterceptor.class)
+                                    .on(named("iterator").and(takesArguments(0))));
                 })
                 .installOn(inst);
 
