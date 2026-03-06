@@ -10,8 +10,13 @@ public class LogVisualizer implements Visualizer {
         _tracer = new LogTracer("Console");
     }
     
-    public void log(String message) {
+    public void println(String message) {
         _tracer.println(message);
+        Tracer.delay();
+    }
+    
+    public void print(String message) {
+        _tracer.print(message);
         Tracer.delay();
     }
     

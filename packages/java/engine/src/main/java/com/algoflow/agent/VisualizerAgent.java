@@ -43,7 +43,8 @@ public class VisualizerAgent {
         BiConsumer<Object, Object[]> onSet = VisualizerRegistry::onSet;
         BiConsumer<Object, Object[]> onAdd = VisualizerRegistry::onAdd;
         Consumer<Object> onClear = VisualizerRegistry::onClear;
-        Consumer<String> onLog = VisualizerRegistry::onLog;
+        Consumer<String> onPrintln = VisualizerRegistry::onPrintln;
+        Consumer<String> onPrint = VisualizerRegistry::onPrint;
         BiConsumer<Object, Object[]> onRemove = VisualizerRegistry::onRemove;
 
         Field getListener = bootBridge.getField("getListener");
@@ -62,9 +63,13 @@ public class VisualizerAgent {
         clearListener.setAccessible(true);
         clearListener.set(null, onClear);
         
-        Field logListener = bootBridge.getField("logListener");
-        logListener.setAccessible(true);
-        logListener.set(null, onLog);
+        Field printlnListener = bootBridge.getField("printlnListener");
+        printlnListener.setAccessible(true);
+        printlnListener.set(null, onPrintln);
+        
+        Field printListenerField = bootBridge.getField("printListener");
+        printListenerField.setAccessible(true);
+        printListenerField.set(null, onPrint);
         
         Field removeListener = bootBridge.getField("removeListener");
         removeListener.setAccessible(true);
@@ -111,7 +116,9 @@ public class VisualizerAgent {
                             .visit(new LocalVariableTrackerWrapper())
                             .visit(new ArrayAccessWrapper());
                 })
-                .type(ElementMatchers.is(java.util.ArrayList.class).or(ElementMatchers.is(LinkedList.class)))
+                .type(ElementMatchers.is(java.util.ArrayList.class)
+                        .or(ElementMatchers.is(LinkedList.class))
+                        .or(ElementMatchers.is(java.util.Stack.class)))
                 .transform((builder, type, classLoader, module, protectionDomain) -> {
                     System.out.println("[VisualizerAgent] Transforming: " + type.getName());
                     return builder
@@ -142,8 +149,10 @@ public class VisualizerAgent {
                 .transform((builder, type, classLoader, module, protectionDomain) -> {
                     System.out.println("[VisualizerAgent] Transforming PrintStream");
                     return builder
-                            .visit(Advice.to(PrintStreamInterceptor.class)
-                                    .on(named("println").and(takesArguments(String.class))));
+                            .visit(Advice.to(PrintStreamInterceptor.PrintlnInterceptor.class)
+                                    .on(named("println").and(takesArguments(String.class))))
+                            .visit(Advice.to(PrintStreamInterceptor.PrintInterceptor.class)
+                                    .on(named("print").and(takesArguments(String.class))));
                 })
                 .type(ElementMatchers.isSubTypeOf(java.util.Iterator.class)
                         .and(nameStartsWith("java.util.")))
@@ -155,6 +164,7 @@ public class VisualizerAgent {
                 })
                 .type(ElementMatchers.is(java.util.ArrayList.class)
                         .or(ElementMatchers.is(LinkedList.class))
+                        .or(ElementMatchers.is(java.util.Stack.class))
                         .or(ElementMatchers.is(java.util.ArrayDeque.class))
                         .or(ElementMatchers.is(java.util.PriorityQueue.class)))
                 .transform((builder, type, classLoader, module, protectionDomain) -> {

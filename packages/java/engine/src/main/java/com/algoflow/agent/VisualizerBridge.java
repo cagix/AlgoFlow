@@ -7,7 +7,8 @@ public class VisualizerBridge {
     public static BiConsumer<Object, Object[]> setListener;
     public static BiConsumer<Object, Object[]> addListener;
     public static Consumer<Object> clearListener;
-    public static Consumer<String> logListener;
+    public static Consumer<String> printlnListener;
+    public static Consumer<String> printListener;
     public static BiConsumer<Object, Object[]> removeListener;
     public static java.util.function.Consumer<Object> iteratorNextListener;
     public static BiConsumer<Object, Object> iteratorCreatedListener;

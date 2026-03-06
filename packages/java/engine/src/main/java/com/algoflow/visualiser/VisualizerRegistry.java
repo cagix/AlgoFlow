@@ -281,11 +281,14 @@ public class VisualizerRegistry {
         }
     }
 
-    public static void onLog(String message) {
+    public static void onPrintln(String message) {
         if (!isCalledFromRunner("println")) return;
-        if (_logVisualizer != null) {
-            _logVisualizer.log(message);
-        }
+        if (_logVisualizer != null) _logVisualizer.println(message);
+    }
+
+    public static void onPrint(String message) {
+        if (!isCalledFromRunner("print")) return;
+        if (_logVisualizer != null) _logVisualizer.print(message);
     }
     
 
