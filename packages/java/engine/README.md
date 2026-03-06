@@ -112,4 +112,4 @@ visualiser/
 
 - `@Graph` only supports `int[][]` — intercepting `HashMap`/`Iterator` causes JVM bootstrap recursion
 - Collections must be declared as fields — auto-registration of unknown collections is disabled
-- `for-each` over collections uses `Iterator` which cannot be safely intercepted
+- `for-each` over collections uses `Iterator` which cannot be safely intercepted — use indexed `for` loops with `get(i)` for visualization

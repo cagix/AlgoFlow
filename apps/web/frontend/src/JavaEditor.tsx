@@ -3,11 +3,13 @@ import { useState } from "react";
 import { loadCommands, play } from "./visualizer/visualizerEngine";
 import { executeJavaCode } from "./api/backend";
 import { DEFAULT_JAVA_CODE, SAMPLE_COMMANDS } from "./constants/sampleCode";
+import { ALGORITHMS, CATEGORIES } from "./constants/algorithms";
 
 export default function JavaEditor() {
     const [code, setCode] = useState(DEFAULT_JAVA_CODE);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [menuOpen, setMenuOpen] = useState(false);
 
     const handleRun = async () => {
         setLoading(true);
@@ -54,9 +56,57 @@ export default function JavaEditor() {
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
+                    gap: 8,
                 }}
             >
-                {error && <span style={{ color: "#f44336", fontSize: 12 }}>{error}</span>}
+                <div style={{ position: "relative" }}>
+                    <button
+                        onClick={() => setMenuOpen(!menuOpen)}
+                        style={{ padding: "6px 12px", fontSize: 13, cursor: "pointer" }}
+                    >
+                        📚 Algorithms ▾
+                    </button>
+                    {menuOpen && (
+                        <div
+                            style={{
+                                position: "absolute",
+                                bottom: "100%",
+                                left: 0,
+                                background: "#252526",
+                                border: "1px solid #444",
+                                borderRadius: 4,
+                                width: 220,
+                                maxHeight: 320,
+                                overflowY: "auto",
+                                zIndex: 10,
+                                marginBottom: 4,
+                            }}
+                        >
+                            {CATEGORIES.map(cat => (
+                                <div key={cat}>
+                                    <div style={{ padding: "6px 10px", fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: 1 }}>{cat}</div>
+                                    {ALGORITHMS.filter(a => a.category === cat).map(a => (
+                                        <div
+                                            key={a.name}
+                                            onClick={() => { setCode(a.code); setMenuOpen(false); }}
+                                            style={{
+                                                padding: "6px 16px",
+                                                fontSize: 13,
+                                                color: "#ddd",
+                                                cursor: "pointer",
+                                            }}
+                                            onMouseEnter={e => (e.currentTarget.style.background = "#333")}
+                                            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                                        >
+                                            {a.name}
+                                        </div>
+                                    ))}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                {error && <span style={{ color: "#f44336", fontSize: 12, flex: 1 }}>{error}</span>}
                 <div style={{ flex: 1 }} />
                 <button
                     onClick={handleRun}
