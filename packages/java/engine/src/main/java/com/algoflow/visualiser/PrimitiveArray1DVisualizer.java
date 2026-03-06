@@ -30,6 +30,9 @@ public class PrimitiveArray1DVisualizer implements Visualizer {
         }
         int idx = (Integer) args[0];
         Object value = args[1];
+        if (_array instanceof boolean[] && value instanceof Integer i) {
+            value = i != 0;
+        }
         _tracer.patch(idx, value);
         Tracer.delay();
         _tracer.depatch(idx);
