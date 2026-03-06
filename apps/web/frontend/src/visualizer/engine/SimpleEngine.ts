@@ -94,6 +94,8 @@ export class SimpleEngine {
             }
         } else if (key !== null && method === 'LogTracer') {
             this.tracers[key] = { type: 'log', logs: [], title: args[0] || 'Log' };
+        } else if (key !== null && method === 'GraphTracer') {
+            this.tracers[key] = { type: 'graph', adjMatrix: [], nodes: [], visitedEdges: new Set<string>(), layout: 'circle', title: args[0] || 'Graph' };
         } else if (key !== null && method === 'VerticalLayout') {
             this.tracers[key] = { type: 'layout', children: args[0] || [], title: 'Layout' };
         } else if (key !== null && method === 'set') {
@@ -129,6 +131,13 @@ export class SimpleEngine {
                 } else {
                     this.tracers[key].calls = [];
                 }
+                this.updateRenderer();
+            } else if (this.tracers[key]?.type === 'graph') {
+                const raw = args[0];
+                const matrix = (raw.length === 1 && Array.isArray(raw[0]) && Array.isArray(raw[0][0])) ? raw[0] : raw;
+                this.tracers[key].adjMatrix = matrix;
+                this.tracers[key].nodes = matrix.map((_: any, i: number) => ({ state: 'default', index: i }));
+                this.tracers[key].visitedEdges = new Set<string>();
                 this.updateRenderer();
             } else if (this.tracers[key]?.type === 'variables') {
                 const rawData = args[0];
@@ -168,6 +177,35 @@ export class SimpleEngine {
         } else if (key !== null && method === 'pop') {
             if (this.tracers[key]?.type === 'recursion' && this.tracers[key].calls.length > 0) {
                 this.tracers[key].calls[this.tracers[key].calls.length - 1].active = false;
+                this.updateRenderer();
+            }
+        } else if (key !== null && method === 'layoutCircle') {
+            if (this.tracers[key]?.type === 'graph') {
+                this.tracers[key].layout = 'circle';
+            }
+        } else if (key !== null && method === 'visit') {
+            if (this.tracers[key]?.type === 'graph') {
+                const nodeIdx = Math.floor(args[0]);
+                if (this.tracers[key].nodes[nodeIdx]) {
+                    if (this.tracers[key].nodes[nodeIdx].state === 'default') {
+                        this.tracers[key].nodes[nodeIdx].state = 'active';
+                    }
+                }
+                if (args.length >= 2) {
+                    const src = Math.floor(args[1]);
+                    if (src !== nodeIdx) {
+                        const a = Math.min(src, nodeIdx), b = Math.max(src, nodeIdx);
+                        this.tracers[key].visitedEdges.add(`${a}-${b}`);
+                    }
+                }
+                this.updateRenderer();
+            }
+        } else if (key !== null && method === 'leave') {
+            if (this.tracers[key]?.type === 'graph') {
+                const nodeIdx = Math.floor(args[0]);
+                if (this.tracers[key].nodes[nodeIdx]) {
+                    this.tracers[key].nodes[nodeIdx].state = 'explored';
+                }
                 this.updateRenderer();
             }
         } else if (key !== null && method === 'setVar') {
@@ -264,6 +302,8 @@ export class SimpleEngine {
                 this.renderer.setData({ type: 'recursion', calls, title: tracer.title, recursiveOnly: this.recursiveOnly, onToggleRecursiveOnly: () => this.toggleRecursiveOnly() });
             } else if (tracer.type === 'variables') {
                 this.renderer.setData({ type: 'variables', vars: tracer.vars, title: tracer.title, patchState: tracer.patchState });
+            } else if (tracer.type === 'graph') {
+                this.renderer.setData({ type: 'graph', adjMatrix: tracer.adjMatrix, nodes: tracer.nodes, visitedEdges: [...tracer.visitedEdges], title: tracer.title });
             } else if (tracer.type === 'layout') {
                 const children = tracer.children
                     .filter((childKey: string) => !this.hiddenChildren.has(childKey))
@@ -274,6 +314,9 @@ export class SimpleEngine {
                         }
                         if (c?.type === 'recursion') {
                             return { ...c, recursiveOnly: this.recursiveOnly, onToggleRecursiveOnly: () => this.toggleRecursiveOnly() };
+                        }
+                        if (c?.type === 'graph') {
+                            return { ...c, visitedEdges: [...c.visitedEdges] };
                         }
                         return c;
                     })

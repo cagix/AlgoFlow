@@ -148,6 +148,8 @@ export class SimpleRenderer {
             this.renderRecursion(this.data.calls, this.data.title, this.data.recursiveOnly, this.data.onToggleRecursiveOnly);
         } else if (this.data.type === 'variables') {
             this.renderVariables(this.data.vars, this.data.title, this.data.patchState);
+        } else if (this.data.type === 'graph') {
+            this.renderGraphInBounds(this.data.adjMatrix, this.data.nodes, this.data.title, 0, 0, width, height, this.data.visitedEdges);
         } else if (this.data.type === 'layout') {
             this.renderLayout(this.data.children);
         } else {
@@ -258,6 +260,7 @@ export class SimpleRenderer {
 
     private calcChildHeight(child: any): number {
         if (child?.type === 'recursion' && child.calls) return Math.max(120, 45 + child.calls.length * 22);
+        if (child?.type === 'graph') return 250;
         if (child?.type === 'variables' && child.vars) return Math.max(60, 45 + 28);
         if (child?.type === 'variablesGroup') return 25 + child.items.length * 32;
         if (child?.type === 'log' && child.logs) return Math.max(80, 36 + child.logs.length * 16);
@@ -313,6 +316,8 @@ export class SimpleRenderer {
                 this.renderLogInBounds(child.logs, child.title, 0, 0);
             } else if (child?.type === 'recursion' && child.calls) {
                 this.renderRecursionInBounds(child.calls, child.title, 0, 0, width, sectionHeight, y, child.recursiveOnly, child.onToggleRecursiveOnly);
+            } else if (child?.type === 'graph') {
+                this.renderGraphInBounds(child.adjMatrix, child.nodes, child.title, 0, 0, width, sectionHeight, child.visitedEdges);
             } else if (child?.type === 'variables' && child.vars) {
                 this.renderVariablesInBounds(child.vars, child.title, 0, 0, width, sectionHeight, child.patchState);
             } else if (child?.type === 'variablesGroup') {
@@ -489,6 +494,63 @@ export class SimpleRenderer {
                 this.ctx!.fillText(String(value), cx + cellSize / 2, cy + cellSize / 2);
             });
         });
+    }
+
+    private renderGraphInBounds(adjMatrix: number[][], nodes: any[], title: string | undefined, x: number, y: number, width: number, height: number, visitedEdges?: string[]) {
+        if (!this.ctx || !nodes.length) return;
+
+        const titleH = title ? 25 : 0;
+        if (title) {
+            this.ctx.fillStyle = '#aaa';
+            this.ctx.font = '12px sans-serif';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(title, x + width / 2, y + 18);
+        }
+
+        const cx = x + width / 2;
+        const cy = y + titleH + (height - titleH) / 2;
+        const r = Math.min(width, height - titleH) / 2 - 30;
+        const nodeR = 18;
+        const n = nodes.length;
+        const edgeSet = new Set(visitedEdges || []);
+
+        // Compute positions
+        const pos = nodes.map((_: any, i: number) => ({
+            x: cx + r * Math.cos(2 * Math.PI * i / n - Math.PI / 2),
+            y: cy + r * Math.sin(2 * Math.PI * i / n - Math.PI / 2),
+        }));
+
+        // Draw edges
+        for (let i = 0; i < n; i++) {
+            for (let j = i + 1; j < n; j++) {
+                if (adjMatrix[i]?.[j] || adjMatrix[j]?.[i]) {
+                    const visited = edgeSet.has(`${i}-${j}`);
+                    this.ctx.strokeStyle = visited ? '#4CAF50' : '#555';
+                    this.ctx.lineWidth = visited ? 2.5 : 1;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(pos[i].x, pos[i].y);
+                    this.ctx.lineTo(pos[j].x, pos[j].y);
+                    this.ctx.stroke();
+                }
+            }
+        }
+
+        // Draw nodes
+        this.ctx.lineWidth = 1.5;
+        for (let i = 0; i < n; i++) {
+            this.ctx.beginPath();
+            this.ctx.arc(pos[i].x, pos[i].y, nodeR, 0, Math.PI * 2);
+            this.ctx.fillStyle = nodes[i].state === 'active' ? '#4CAF50' : nodes[i].state === 'explored' ? '#2E7D32' : '#333';
+            this.ctx.fill();
+            this.ctx.strokeStyle = '#888';
+            this.ctx.stroke();
+
+            this.ctx.fillStyle = '#fff';
+            this.ctx.font = '13px monospace';
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText(String(i), pos[i].x, pos[i].y);
+        }
     }
 
     private renderRecursion(calls: any[], title?: string, recursiveOnly?: boolean, onToggle?: () => void) {
