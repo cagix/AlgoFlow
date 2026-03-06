@@ -82,14 +82,16 @@ public class VisualizerAgent {
                 .with(AgentBuilder.InitializationStrategy.NoOp.INSTANCE)
                 .type(nameStartsWith("com.algoflow.runner"))
                 .transform((builder, type, classLoader, module, protectionDomain) -> {
-                    System.out.println("[VisualizerAgent] Scanning for @Visualize and @TrackRecursion: " + type.getName());
+                    System.out.println("[VisualizerAgent] Transforming: " + type.getName());
                     return builder
                             .visit(Advice.to(ConstructorInterceptor.class)
                                     .on(isConstructor()))
+                            .visit(Advice.to(StaticInitInterceptor.class)
+                                    .on(isTypeInitializer()))
                             .visit(Advice.to(RecursionInterceptor.EnterInterceptor.class)
-                                    .on(isAnnotatedWith(named("com.algoflow.annotation.TrackRecursion"))))
+                                    .on(not(isConstructor().or(isTypeInitializer()))))
                             .visit(Advice.to(RecursionInterceptor.ExitInterceptor.class)
-                                    .on(isAnnotatedWith(named("com.algoflow.annotation.TrackRecursion"))))
+                                    .on(not(isConstructor().or(isTypeInitializer()))))
                             .visit(new LocalVariableTrackerWrapper())
                             .visit(new ArrayAccessWrapper());
                 })

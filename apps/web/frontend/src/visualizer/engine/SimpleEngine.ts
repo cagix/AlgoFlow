@@ -7,6 +7,8 @@ export class SimpleEngine {
     private root: string | null = null;
     private renderer: SimpleRenderer;
     private listeners: Set<() => void> = new Set();
+    private hiddenChildren: Set<string> = new Set();
+    private recursiveOnly = false;
 
     constructor() {
         this.renderer = new SimpleRenderer();
@@ -44,6 +46,35 @@ export class SimpleEngine {
         this.renderer.setData(null);
     }
 
+    private detectSwaps(chunks: Chunk[]): Map<string, { i: number; j: number }> {
+        const swaps = new Map<string, { i: number; j: number }>();
+        const patches: Command[] = [];
+        for (const chunk of chunks) {
+            for (const c of chunk.commands) {
+                if (c.key !== null && c.method === 'patch') patches.push(c);
+            }
+        }
+
+        for (const tracerKey of new Set(patches.map(p => p.key!))) {
+            const tp = patches.filter(p => p.key === tracerKey);
+            if (tp.length !== 2) continue;
+            const tracer = this.tracers[tracerKey];
+            if (tracer?.type !== 'array') continue;
+
+            const [a, b] = tp;
+            const idxA = a.args[0], valA = a.args[1];
+            const idxB = b.args[0], valB = b.args[1];
+            if (idxA === idxB) continue;
+
+            const oldA = tracer.data[idxA]?.value;
+            const oldB = tracer.data[idxB]?.value;
+            if (valA === oldB && valB === oldA) {
+                swaps.set(tracerKey, { i: idxA, j: idxB });
+            }
+        }
+        return swaps;
+    }
+
     private applyCommand(command: Command) {
         const { key, method, args } = command;
 
@@ -54,7 +85,7 @@ export class SimpleEngine {
             this.tracers[key] = { type: 'array', data: [], title: args[0] };
         } else if (key !== null && method === 'Array2DTracer') {
             const title = args[0] || '';
-            if (title.toLowerCase().includes('recursion')) {
+            if (title.toLowerCase().includes('callstack')) {
                 this.tracers[key] = { type: 'recursion', calls: [], title: args[0] };
             } else if (title.toLowerCase().includes('variable') || title.toLowerCase().includes('local')) {
                 this.tracers[key] = { type: 'variables', vars: {}, title: args[0] };
@@ -71,57 +102,40 @@ export class SimpleEngine {
                 this.updateRenderer();
             } else if (this.tracers[key]?.type === 'array2d') {
                 const rawData = args[0];
-                console.log('Array2D set - rawData:', rawData);
-                console.log('Array2D set - rawData type:', typeof rawData, 'isArray:', Array.isArray(rawData));
-                console.log('Array2D set - rawData[0]:', rawData[0]);
-                
-                // Unwrap triple-nested arrays: [[[...]]] -> [[...]]
                 const unwrapped = (rawData.length === 1 && Array.isArray(rawData[0]) && Array.isArray(rawData[0][0])) 
                     ? rawData[0] 
                     : rawData;
-                console.log('Array2D set - unwrapped:', unwrapped);
-                
-                this.tracers[key].data = unwrapped.map((row: any[]) => {
-                    console.log('Array2D set - processing row:', row);
-                    return row.map((v: any) => {
-                        console.log('Array2D set - processing value:', v, 'type:', typeof v);
-                        return { value: v, selected: false, patched: false };
-                    });
-                });
-                console.log('Array2D set - final data:', this.tracers[key].data);
+                this.tracers[key].data = unwrapped.map((row: any[]) =>
+                    row.map((v: any) => ({ value: v, selected: false, patched: false }))
+                );
                 this.updateRenderer();
             } else if (this.tracers[key]?.type === 'log') {
                 this.tracers[key].logs = [args[0]];
                 this.updateRenderer();
             } else if (this.tracers[key]?.type === 'recursion') {
-                // Convert Array2D format to recursion calls
                 const rawData = args[0];
-                console.log('Recursion set - rawData:', rawData);
-                
-                // Handle triple-nested format: [[["method1", "method2"]]]
                 let flatData = rawData;
                 if (Array.isArray(rawData) && rawData.length === 1 && Array.isArray(rawData[0]) && Array.isArray(rawData[0][0])) {
                     flatData = rawData[0];
                 }
-                
                 if (Array.isArray(flatData) && flatData.length > 0) {
-                    this.tracers[key].calls = flatData.map((call: string) => ({ method: call, params: [], active: false }));
+                    this.tracers[key].calls = flatData.map((call: string) => {
+                        const raw = String(call);
+                        const isRecursive = /recursive/i.test(raw);
+                        const m = raw.replace(/\s*recursive\s*/gi, '').trim().replace(/,\s*$/, '');
+                        return { method: m, params: [], active: false, isRecursive };
+                    });
                     this.tracers[key].calls[0].active = true;
                 } else {
                     this.tracers[key].calls = [];
                 }
                 this.updateRenderer();
             } else if (this.tracers[key]?.type === 'variables') {
-                // Convert Array2D format to variables
                 const rawData = args[0];
-                console.log('Variables set - rawData:', rawData);
-                
-                // Handle triple-nested format: [[["name", value]]]
                 let flatData = rawData;
                 if (Array.isArray(rawData) && rawData.length === 1 && Array.isArray(rawData[0]) && Array.isArray(rawData[0][0])) {
                     flatData = rawData[0];
                 }
-                
                 const vars: Record<string, any> = {};
                 if (Array.isArray(flatData) && flatData.length > 0) {
                     flatData.forEach((item: any) => {
@@ -145,7 +159,10 @@ export class SimpleEngine {
             }
         } else if (key !== null && method === 'push') {
             if (this.tracers[key]?.type === 'recursion') {
-                this.tracers[key].calls.push({ method: args[0], params: args[1] || [], active: true });
+                const rawMethod = String(args[0]);
+                const isRecursive = /recursive/i.test(rawMethod);
+                const method = rawMethod.replace(/\s*recursive\s*/gi, '').trim().replace(/,\s*$/, '');
+                this.tracers[key].calls.push({ method, params: args[1] || [], active: true, isRecursive });
                 this.updateRenderer();
             }
         } else if (key !== null && method === 'pop') {
@@ -180,7 +197,6 @@ export class SimpleEngine {
                 this.updateRenderer();
             }
         } else if (key !== null && method === 'patch') {
-            console.log('Patch command:', { key, method, args, tracerType: this.tracers[key]?.type });
             if (this.tracers[key]?.type === 'array' && this.tracers[key]?.data?.[args[0]]) {
                 this.tracers[key].data[args[0]].value = args[1];
                 this.tracers[key].data[args[0]].patched = true;
@@ -195,15 +211,12 @@ export class SimpleEngine {
                 this.tracers[key].calls[args[0]].patched = true;
                 this.updateRenderer();
             } else if (this.tracers[key]?.type === 'variables') {
-                // Variables are treated as 2D array: patch(row, col) where row=variable index, col=0(name)/1(value)
                 if (args.length >= 2) {
                     const varNames = Object.keys(this.tracers[key].vars);
                     const rowIndex = Math.floor(args[0]);
                     const colIndex = Math.floor(args[1]);
                     const varName = varNames[rowIndex];
-                    
                     if (varName && this.tracers[key].vars.hasOwnProperty(varName)) {
-                        // Store patch state for rendering
                         if (!this.tracers[key].patchState) {
                             this.tracers[key].patchState = {};
                         }
@@ -227,7 +240,6 @@ export class SimpleEngine {
                     const varNames = Object.keys(this.tracers[key].vars);
                     const rowIndex = Math.floor(args[0]);
                     const varName = varNames[rowIndex];
-                    
                     if (varName && this.tracers[key].patchState?.[varName]) {
                         delete this.tracers[key].patchState[varName];
                         this.updateRenderer();
@@ -248,12 +260,23 @@ export class SimpleEngine {
             } else if (tracer.type === 'log') {
                 this.renderer.setData({ type: 'log', logs: tracer.logs, title: tracer.title });
             } else if (tracer.type === 'recursion') {
-                this.renderer.setData({ type: 'recursion', calls: tracer.calls, title: tracer.title });
+                const calls = this.recursiveOnly ? tracer.calls.filter((c: any) => c.isRecursive) : tracer.calls;
+                this.renderer.setData({ type: 'recursion', calls, title: tracer.title, recursiveOnly: this.recursiveOnly, onToggleRecursiveOnly: () => this.toggleRecursiveOnly() });
             } else if (tracer.type === 'variables') {
                 this.renderer.setData({ type: 'variables', vars: tracer.vars, title: tracer.title, patchState: tracer.patchState });
             } else if (tracer.type === 'layout') {
                 const children = tracer.children
-                    .map((childKey: string) => this.tracers[childKey])
+                    .filter((childKey: string) => !this.hiddenChildren.has(childKey))
+                    .map((childKey: string) => {
+                        const c = this.tracers[childKey];
+                        if (c?.type === 'recursion' && this.recursiveOnly) {
+                            return { ...c, calls: c.calls.filter((call: any) => call.isRecursive), recursiveOnly: this.recursiveOnly, onToggleRecursiveOnly: () => this.toggleRecursiveOnly() };
+                        }
+                        if (c?.type === 'recursion') {
+                            return { ...c, recursiveOnly: this.recursiveOnly, onToggleRecursiveOnly: () => this.toggleRecursiveOnly() };
+                        }
+                        return c;
+                    })
                     .filter((child: any) => child);
                 this.renderer.setData({ type: 'layout', children });
             }
@@ -262,8 +285,27 @@ export class SimpleEngine {
 
     next(): boolean {
         if (this.cursor >= this.chunks.length) return false;
-        this.cursor++;
+
+        // Look ahead: collect current chunk + next chunk to detect cross-chunk swaps
+        const lookahead = [this.chunks[this.cursor]];
+        if (this.cursor + 1 < this.chunks.length) {
+            lookahead.push(this.chunks[this.cursor + 1]);
+        }
+        const swaps = this.detectSwaps(lookahead);
+
+        // If swap spans two chunks, advance cursor by 2
+        const singleChunkSwaps = this.detectSwaps([this.chunks[this.cursor]]);
+        const crossChunk = swaps.size > 0 && singleChunkSwaps.size === 0;
+        
+        this.cursor += (crossChunk && this.cursor + 1 < this.chunks.length) ? 2 : 1;
         this.updateToCurrentCursor();
+
+        if (swaps.size > 0) {
+            for (const [, { i, j }] of swaps) {
+                this.renderer.animateSwap('', i, j);
+            }
+        }
+
         return true;
     }
 
@@ -295,6 +337,40 @@ export class SimpleEngine {
 
     getLength() {
         return this.chunks.length;
+    }
+
+    getLayoutChildren(): { key: string; title: string }[] {
+        if (!this.root) return [];
+        const tracer = this.tracers[this.root];
+        if (tracer?.type !== 'layout') return [];
+        return tracer.children
+            .map((k: string) => ({ key: k, title: this.tracers[k]?.title || k }))
+            .filter((c: { key: string; title: string }) => this.tracers[c.key]);
+    }
+
+    toggleChild(key: string) {
+        if (this.hiddenChildren.has(key)) this.hiddenChildren.delete(key);
+        else this.hiddenChildren.add(key);
+        this.updateRenderer();
+        this.notify();
+    }
+
+    isChildHidden(key: string): boolean {
+        return this.hiddenChildren.has(key);
+    }
+
+    getRecursiveOnly(): boolean {
+        return this.recursiveOnly;
+    }
+
+    toggleRecursiveOnly() {
+        this.recursiveOnly = !this.recursiveOnly;
+        this.updateRenderer();
+        this.notify();
+    }
+
+    hasRecursionTracer(): boolean {
+        return Object.values(this.tracers).some((t: any) => t.type === 'recursion');
     }
 
     subscribe(listener: () => void) {

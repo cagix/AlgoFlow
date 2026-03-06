@@ -1,10 +1,26 @@
+interface SwapAnimation {
+    tracerKey: string;
+    i: number;
+    j: number;
+    progress: number;
+    startTime: number;
+}
+
 export class SimpleRenderer {
     private canvas: HTMLCanvasElement | null = null;
     private ctx: CanvasRenderingContext2D | null = null;
     private data: any = null;
-    private containerHeight: number = 0;
+    private container: HTMLElement | null = null;
+    private swapAnim: SwapAnimation | null = null;
+    private animFrameId: number | null = null;
+    private resizeObserver: ResizeObserver | null = null;
+    private clickRegions: { x: number; y: number; w: number; h: number; action: () => void }[] = [];
+    private handleClick: ((e: MouseEvent) => void) | null = null;
+
+    private static readonly SWAP_DURATION = 300;
 
     mount(container: HTMLElement) {
+        this.container = container;
         this.canvas = document.createElement('canvas');
         this.canvas.style.width = '100%';
         this.canvas.style.display = 'block';
@@ -12,29 +28,48 @@ export class SimpleRenderer {
         container.appendChild(this.canvas);
         
         this.ctx = this.canvas.getContext('2d');
-        this.containerHeight = container.clientHeight;
+        this.handleClick = (e: MouseEvent) => {
+            const rect = this.canvas!.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            for (const r of this.clickRegions) {
+                if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
+                    r.action();
+                    break;
+                }
+            }
+        };
+        this.canvas.addEventListener('click', this.handleClick);
+        this.resizeObserver = new ResizeObserver(() => this.resize());
+        this.resizeObserver.observe(container);
         this.resize();
-        window.addEventListener('resize', this.resize);
     }
 
     unmount() {
-        window.removeEventListener('resize', this.resize);
+        this.resizeObserver?.disconnect();
+        if (this.animFrameId !== null) cancelAnimationFrame(this.animFrameId);
+        if (this.canvas && this.handleClick) this.canvas.removeEventListener('click', this.handleClick);
         if (this.canvas?.parentElement) {
             this.canvas.parentElement.removeChild(this.canvas);
         }
+        this.container = null;
     }
 
     private resize = () => {
-        if (!this.canvas) return;
+        if (!this.canvas || !this.container) return;
         const rect = this.canvas.getBoundingClientRect();
         const dpr = window.devicePixelRatio || 1;
+        const containerHeight = this.container.clientHeight;
         
-        // Calculate required height based on content
-        let requiredHeight = this.containerHeight;
+        let requiredHeight = containerHeight;
         if (this.data?.type === 'log' && this.data.logs) {
-            requiredHeight = Math.max(this.containerHeight, 50 + this.data.logs.length * 20);
+            requiredHeight = Math.max(containerHeight, 50 + this.data.logs.length * 20);
         } else if (this.data?.type === 'layout' && this.data.children) {
-            requiredHeight = Math.max(this.containerHeight, this.data.children.length * 150);
+            let total = 0;
+            for (const child of this.data.children) {
+                total += this.calcChildHeight(child);
+            }
+            requiredHeight = Math.max(containerHeight, total);
         }
         
         this.canvas.width = rect.width * dpr;
@@ -50,8 +85,41 @@ export class SimpleRenderer {
         this.resize();
     }
 
+    animateSwap(_tracerKey: string, i: number, j: number) {
+        this.swapAnim = { tracerKey: _tracerKey, i, j, progress: 0, startTime: performance.now() };
+        this.animLoop();
+    }
+
+    private animLoop = () => {
+        if (!this.swapAnim) return;
+        const elapsed = performance.now() - this.swapAnim.startTime;
+        this.swapAnim.progress = Math.min(elapsed / SimpleRenderer.SWAP_DURATION, 1);
+        this.render();
+        if (this.swapAnim.progress < 1) {
+            this.animFrameId = requestAnimationFrame(this.animLoop);
+        } else {
+            this.swapAnim = null;
+            this.animFrameId = null;
+        }
+    };
+
+    private easeInOut(t: number): number {
+        return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    }
+
+    private truncateText(text: string, maxWidth: number): string {
+        if (!this.ctx) return text;
+        if (this.ctx.measureText(text).width <= maxWidth) return text;
+        let t = text;
+        while (t.length > 0 && this.ctx.measureText(t + '…').width > maxWidth) {
+            t = t.slice(0, -1);
+        }
+        return t + '…';
+    }
+
     private render() {
         if (!this.ctx || !this.canvas) return;
+        this.clickRegions = [];
         
         const dpr = window.devicePixelRatio || 1;
         this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -61,7 +129,14 @@ export class SimpleRenderer {
         
         this.ctx.clearRect(0, 0, width, height);
         
-        if (!this.data) return;
+        if (!this.data) {
+            this.ctx.fillStyle = '#555';
+            this.ctx.font = '14px sans-serif';
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText('Run code to visualize', width / 2, height / 2);
+            return;
+        }
 
         if (this.data.type === 'array') {
             this.renderArray(this.data.data, this.data.title);
@@ -70,7 +145,7 @@ export class SimpleRenderer {
         } else if (this.data.type === 'log') {
             this.renderLog(this.data.logs, this.data.title);
         } else if (this.data.type === 'recursion') {
-            this.renderRecursion(this.data.calls, this.data.title);
+            this.renderRecursion(this.data.calls, this.data.title, this.data.recursiveOnly, this.data.onToggleRecursiveOnly);
         } else if (this.data.type === 'variables') {
             this.renderVariables(this.data.vars, this.data.title, this.data.patchState);
         } else if (this.data.type === 'layout') {
@@ -87,7 +162,7 @@ export class SimpleRenderer {
         const width = this.canvas.width / dpr;
         const height = this.canvas.height / dpr;
 
-        const cellWidth = 80;
+        const cellWidth = Math.min(80, (width - 40) / Math.max(arr.length, 1));
         const cellHeight = 60;
         const totalWidth = arr.length * cellWidth;
         const startX = (width - totalWidth) / 2;
@@ -100,26 +175,45 @@ export class SimpleRenderer {
             this.ctx.fillText(title, width / 2, y - 15);
         }
 
+        const anim = this.swapAnim;
+        const t = anim ? this.easeInOut(anim.progress) : 0;
+
         arr.forEach((item, i) => {
             const value = typeof item === 'object' ? item.value : item;
             const selected = typeof item === 'object' ? item.selected : false;
             const patched = typeof item === 'object' ? item.patched : false;
-            const x = startX + i * cellWidth;
 
-            this.ctx!.fillStyle = patched ? '#f44336' : (selected ? '#2196F3' : '#333');
-            this.ctx!.fillRect(x + 2, y, cellWidth - 4, cellHeight);
+            let offsetX = 0;
+            let isSwapping = false;
+
+            if (anim && (i === anim.i || i === anim.j)) {
+                isSwapping = true;
+                const dist = (anim.j - anim.i) * cellWidth;
+                if (i === anim.i) {
+                    offsetX = t * dist;
+                } else {
+                    offsetX = -t * dist;
+                }
+            }
+
+            const x = startX + i * cellWidth + offsetX;
+            const cy = y;
+
+            this.ctx!.fillStyle = (isSwapping || patched) ? '#f44336' : (selected ? '#2196F3' : '#333');
+            this.ctx!.fillRect(x + 2, cy, cellWidth - 4, cellHeight);
 
             this.ctx!.strokeStyle = '#666';
-            this.ctx!.strokeRect(x + 2, y, cellWidth - 4, cellHeight);
+            this.ctx!.strokeRect(x + 2, cy, cellWidth - 4, cellHeight);
 
             this.ctx!.fillStyle = '#fff';
-            this.ctx!.font = '16px monospace';
+            this.ctx!.font = `${Math.min(16, cellWidth * 0.35)}px monospace`;
             this.ctx!.textAlign = 'center';
-            this.ctx!.fillText(String(value), x + cellWidth / 2, y + cellHeight / 2 + 6);
+            this.ctx!.textBaseline = 'middle';
+            this.ctx!.fillText(String(value), x + cellWidth / 2, cy + cellHeight / 2);
 
             this.ctx!.fillStyle = '#888';
             this.ctx!.font = '12px monospace';
-            this.ctx!.fillText(String(i), x + cellWidth / 2, y + cellHeight + 20);
+            this.ctx!.fillText(String(i), startX + i * cellWidth + cellWidth / 2, y + cellHeight + 20);
         });
     }
 
@@ -162,22 +256,53 @@ export class SimpleRenderer {
         });
     }
 
+    private calcChildHeight(child: any): number {
+        if (child?.type === 'recursion' && child.calls) return Math.max(120, 45 + child.calls.length * 22);
+        if (child?.type === 'variables' && child.vars) return Math.max(60, 45 + 28);
+        if (child?.type === 'variablesGroup') return 25 + child.items.length * 32;
+        if (child?.type === 'log' && child.logs) return Math.max(80, 36 + child.logs.length * 16);
+        return 120;
+    }
+
+    private groupLayoutChildren(children: any[]): any[] {
+        const grouped: any[] = [];
+        const varItems: any[] = [];
+        let logChild: any = null;
+        for (const child of children) {
+            if (child?.type === 'variables') {
+                varItems.push(child);
+            } else if (child?.type === 'log') {
+                logChild = child;
+            } else {
+                grouped.push(child);
+            }
+        }
+        if (varItems.length > 0) {
+            grouped.push({ type: 'variablesGroup', items: varItems });
+        }
+        if (logChild) grouped.push(logChild);
+        return grouped;
+    }
+
     private renderLayout(children: any[]) {
         if (!this.ctx || !this.canvas) return;
         
         const dpr = window.devicePixelRatio || 1;
         const width = this.canvas.width / dpr;
-        const height = this.canvas.height / dpr;
         
-        const sectionHeight = height / children.length;
+        const grouped = this.groupLayoutChildren(children);
+        const heights = grouped.map(c => this.calcChildHeight(c));
         
-        children.forEach((child, i) => {
-            const y = i * sectionHeight;
+        let yOffset = 0;
+        grouped.forEach((child, i) => {
+            const sectionHeight = heights[i];
+            const y = yOffset;
+            yOffset += sectionHeight;
             
             this.ctx!.save();
             this.ctx!.translate(0, y);
             this.ctx!.beginPath();
-            this.ctx!.rect(0, 0, this.canvas!.width, sectionHeight);
+            this.ctx!.rect(0, 0, width, sectionHeight);
             this.ctx!.clip();
             
             if (child?.type === 'array' && child.data) {
@@ -187,18 +312,20 @@ export class SimpleRenderer {
             } else if (child?.type === 'log' && child.logs) {
                 this.renderLogInBounds(child.logs, child.title, 0, 0);
             } else if (child?.type === 'recursion' && child.calls) {
-                this.renderRecursionInBounds(child.calls, child.title, 0, 0, width, sectionHeight);
+                this.renderRecursionInBounds(child.calls, child.title, 0, 0, width, sectionHeight, y, child.recursiveOnly, child.onToggleRecursiveOnly);
             } else if (child?.type === 'variables' && child.vars) {
                 this.renderVariablesInBounds(child.vars, child.title, 0, 0, width, sectionHeight, child.patchState);
+            } else if (child?.type === 'variablesGroup') {
+                this.renderVariablesGroupInBounds(child.items, 0, 0, width);
             }
             
             this.ctx!.restore();
             
-            if (i < children.length - 1) {
+            if (i < grouped.length - 1) {
                 this.ctx!.strokeStyle = '#444';
                 this.ctx!.beginPath();
-                this.ctx!.moveTo(0, (i + 1) * sectionHeight);
-                this.ctx!.lineTo(width, (i + 1) * sectionHeight);
+                this.ctx!.moveTo(0, yOffset);
+                this.ctx!.lineTo(width, yOffset);
                 this.ctx!.stroke();
             }
         });
@@ -207,7 +334,7 @@ export class SimpleRenderer {
     private renderArrayInBounds(arr: any[], title: string | undefined, x: number, y: number, width: number, height: number) {
         if (!this.ctx) return;
 
-        const cellWidth = 60;
+        const cellWidth = Math.min(60, (width - 40) / Math.max(arr.length, 1));
         const cellHeight = 40;
         const totalWidth = arr.length * cellWidth;
         const startX = x + (width - totalWidth) / 2;
@@ -220,26 +347,45 @@ export class SimpleRenderer {
             this.ctx.fillText(title, x + width / 2, startY - 10);
         }
 
+        const anim = this.swapAnim;
+        const t = anim ? this.easeInOut(anim.progress) : 0;
+
         arr.forEach((item, i) => {
             const value = typeof item === 'object' ? item.value : item;
             const selected = typeof item === 'object' ? item.selected : false;
             const patched = typeof item === 'object' ? item.patched : false;
-            const cx = startX + i * cellWidth;
 
-            this.ctx!.fillStyle = patched ? '#f44336' : (selected ? '#2196F3' : '#333');
-            this.ctx!.fillRect(cx + 2, startY, cellWidth - 4, cellHeight);
+            let offsetX = 0;
+            let isSwapping = false;
+
+            if (anim && (i === anim.i || i === anim.j)) {
+                isSwapping = true;
+                const dist = (anim.j - anim.i) * cellWidth;
+                if (i === anim.i) {
+                    offsetX = t * dist;
+                } else {
+                    offsetX = -t * dist;
+                }
+            }
+
+            const cx = startX + i * cellWidth + offsetX;
+            const cy = startY;
+
+            this.ctx!.fillStyle = (isSwapping || patched) ? '#f44336' : (selected ? '#2196F3' : '#333');
+            this.ctx!.fillRect(cx + 2, cy, cellWidth - 4, cellHeight);
 
             this.ctx!.strokeStyle = '#666';
-            this.ctx!.strokeRect(cx + 2, startY, cellWidth - 4, cellHeight);
+            this.ctx!.strokeRect(cx + 2, cy, cellWidth - 4, cellHeight);
 
             this.ctx!.fillStyle = '#fff';
-            this.ctx!.font = '14px monospace';
+            this.ctx!.font = `${Math.min(14, cellWidth * 0.35)}px monospace`;
             this.ctx!.textAlign = 'center';
-            this.ctx!.fillText(String(value), cx + cellWidth / 2, startY + cellHeight / 2 + 5);
+            this.ctx!.textBaseline = 'middle';
+            this.ctx!.fillText(String(value), cx + cellWidth / 2, cy + cellHeight / 2);
             
             this.ctx!.fillStyle = '#888';
             this.ctx!.font = '10px monospace';
-            this.ctx!.fillText(String(i), cx + cellWidth / 2, startY + cellHeight + 15);
+            this.ctx!.fillText(String(i), startX + i * cellWidth + cellWidth / 2, startY + cellHeight + 15);
         });
     }
 
@@ -308,8 +454,6 @@ export class SimpleRenderer {
     private renderArray2DInBounds(rows: any[][], title: string | undefined, x: number, y: number, width: number, height: number) {
         if (!this.ctx) return;
 
-        console.log('Rendering Array2D in bounds:', { title, rows, rowCount: rows?.length });
-
         const cellSize = 35;
         const gridWidth = rows[0]?.length * cellSize || 0;
         const gridHeight = rows.length * cellSize;
@@ -347,7 +491,7 @@ export class SimpleRenderer {
         });
     }
 
-    private renderRecursion(calls: any[], title?: string) {
+    private renderRecursion(calls: any[], title?: string, recursiveOnly?: boolean, onToggle?: () => void) {
         if (!this.ctx || !this.canvas) return;
         
         const dpr = window.devicePixelRatio || 1;
@@ -360,24 +504,28 @@ export class SimpleRenderer {
             this.ctx.font = '14px sans-serif';
             this.ctx.textAlign = 'left';
             this.ctx.fillText(title, 20, y);
+            if (onToggle) this.drawRecursiveToggle(width - 150, y - 10, recursiveOnly ?? false, onToggle);
             y += 30;
         }
         
         calls.forEach((call, i) => {
             const indent = i * 20;
             const x = 20 + indent;
+            const barWidth = width - x - 20;
             
             this.ctx!.fillStyle = call.patched ? '#f44336' : (call.active ? '#4CAF50' : '#666');
-            this.ctx!.fillRect(x, y - 15, width - x - 20, 25);
+            this.ctx!.fillRect(x, y - 15, barWidth, 25);
             
             this.ctx!.strokeStyle = '#888';
-            this.ctx!.strokeRect(x, y - 15, width - x - 20, 25);
+            this.ctx!.strokeRect(x, y - 15, barWidth, 25);
             
             this.ctx!.fillStyle = '#fff';
             this.ctx!.font = '12px monospace';
             this.ctx!.textAlign = 'left';
+            this.ctx!.textBaseline = 'middle';
             const params = call.params.join(', ');
-            this.ctx!.fillText(`${call.method}${params}`, x + 8, y);
+            const label = this.truncateText(`${call.method}${params}`, barWidth - 16);
+            this.ctx!.fillText(label, x + 8, y);
             
             y += 30;
         });
@@ -399,26 +547,10 @@ export class SimpleRenderer {
             y += 30;
         }
         
-        Object.entries(vars).forEach(([name, value]) => {
-            const isPatched = patchState?.[name]?.patched;
-            const displayValue = typeof value === 'object' ? value.value : value;
-            
-            this.ctx!.fillStyle = isPatched ? '#f44336' : '#333';
-            this.ctx!.fillRect(20, y - 15, width - 40, 25);
-            
-            this.ctx!.strokeStyle = '#666';
-            this.ctx!.strokeRect(20, y - 15, width - 40, 25);
-            
-            this.ctx!.fillStyle = '#fff';
-            this.ctx!.font = '12px monospace';
-            this.ctx!.textAlign = 'left';
-            this.ctx!.fillText(`${name} = ${displayValue}`, 28, y);
-            
-            y += 30;
-        });
+        this.drawVarChips(vars, patchState, 20, y, width - 40, '12px monospace');
     }
     
-    private renderRecursionInBounds(calls: any[], title: string | undefined, x: number, y: number, width: number, height: number) {
+    private renderRecursionInBounds(calls: any[], title: string | undefined, x: number, y: number, width: number, _height: number, parentY: number, recursiveOnly?: boolean, onToggle?: () => void) {
         if (!this.ctx) return;
         
         let ly = y + 20;
@@ -428,6 +560,7 @@ export class SimpleRenderer {
             this.ctx.font = '12px sans-serif';
             this.ctx.textAlign = 'left';
             this.ctx.fillText(title, x + 10, ly);
+            if (onToggle) this.drawRecursiveToggle(x + width - 140, parentY + ly - 10, recursiveOnly ?? false, onToggle);
             ly += 25;
         }
         
@@ -445,14 +578,16 @@ export class SimpleRenderer {
             this.ctx!.fillStyle = '#fff';
             this.ctx!.font = '10px monospace';
             this.ctx!.textAlign = 'left';
+            this.ctx!.textBaseline = 'middle';
             const params = call.params.join(', ');
-            this.ctx!.fillText(`${call.method}${params}`, cx + 4, ly);
+            const label = this.truncateText(`${call.method}${params}`, cw - 8);
+            this.ctx!.fillText(label, cx + 4, ly);
             
             ly += 22;
         });
     }
     
-    private renderVariablesInBounds(vars: Record<string, any>, title: string | undefined, x: number, y: number, width: number, height: number, patchState?: Record<string, any>) {
+    private renderVariablesInBounds(vars: Record<string, any>, title: string | undefined, x: number, y: number, width: number, _height: number, patchState?: Record<string, any>) {
         if (!this.ctx) return;
         
         let ly = y + 20;
@@ -465,22 +600,79 @@ export class SimpleRenderer {
             ly += 25;
         }
         
+        this.drawVarChips(vars, patchState, x + 10, ly, width - 20, '10px monospace');
+    }
+
+    private renderVariablesGroupInBounds(items: any[], x: number, y: number, width: number) {
+        if (!this.ctx) return;
+        
+        let ly = y + 18;
+        this.ctx.fillStyle = '#aaa';
+        this.ctx.font = '12px sans-serif';
+        this.ctx.textAlign = 'left';
+        this.ctx.fillText('Local Variables', x + 10, ly);
+        ly += 20;
+        
+        this.ctx.font = '11px sans-serif';
+        const subTitles = items.map((item: any) =>
+            (item.title || '').replace(/locals?\s*[-–—:]?\s*variables?\s*[-–—:]?\s*/i, '').replace(/locals?\s*[-–—:]?\s*/i, '').trim() || 'scope'
+        );
+        const maxLabelW = Math.max(...subTitles.map((s: string) => this.ctx!.measureText(s).width));
+        const chipsX = x + 18 + maxLabelW;
+        
+        items.forEach((item: any, idx: number) => {
+            this.ctx!.fillStyle = '#777';
+            this.ctx!.font = '11px sans-serif';
+            this.ctx!.textAlign = 'left';
+            this.ctx!.textBaseline = 'middle';
+            this.ctx!.fillText(subTitles[idx], x + 12, ly);
+            this.drawVarChips(item.vars, item.patchState, chipsX, ly, width - chipsX + x - 10, '11px monospace');
+            ly += 28;
+        });
+    }
+
+    private drawRecursiveToggle(x: number, y: number, checked: boolean, onToggle: () => void) {
+        if (!this.ctx) return;
+        const label = `${checked ? '☑' : '☐'} recursive only`;
+        this.ctx.fillStyle = '#888';
+        this.ctx.font = '12px sans-serif';
+        this.ctx.textAlign = 'left';
+        this.ctx.textBaseline = 'top';
+        this.ctx.fillText(label, x, y);
+        const tw = this.ctx.measureText(label).width;
+        this.clickRegions.push({ x, y, w: tw, h: 16, action: onToggle });
+    }
+
+    private drawVarChips(vars: Record<string, any>, patchState: Record<string, any> | undefined, startX: number, y: number, maxWidth: number, font: string) {
+        if (!this.ctx) return;
+        const pad = 8, gap = 6, chipH = 22;
+        this.ctx.font = font;
+        let cx = startX;
+        
         Object.entries(vars).forEach(([name, value]) => {
-            const isPatched = patchState?.[name]?.patched;
             const displayValue = typeof value === 'object' ? value.value : value;
+            const label = `${name} = ${displayValue}`;
+            const tw = this.ctx!.measureText(label).width;
+            const chipW = tw + pad * 2;
             
+            if (cx + chipW > startX + maxWidth && cx > startX) {
+                cx = startX;
+                y += chipH + gap;
+            }
+            
+            const isPatched = patchState?.[name]?.patched;
             this.ctx!.fillStyle = isPatched ? '#f44336' : '#333';
-            this.ctx!.fillRect(x + 10, ly - 12, width - 20, 20);
-            
+            this.ctx!.fillRect(cx, y - 12, chipW, chipH);
             this.ctx!.strokeStyle = '#666';
-            this.ctx!.strokeRect(x + 10, ly - 12, width - 20, 20);
+            this.ctx!.strokeRect(cx, y - 12, chipW, chipH);
             
             this.ctx!.fillStyle = '#fff';
-            this.ctx!.font = '10px monospace';
+            this.ctx!.font = font;
             this.ctx!.textAlign = 'left';
-            this.ctx!.fillText(`${name} = ${displayValue}`, x + 14, ly);
+            this.ctx!.textBaseline = 'middle';
+            this.ctx!.fillText(label, cx + pad, y - 1);
             
-            ly += 22;
+            cx += chipW + gap;
         });
     }
 }

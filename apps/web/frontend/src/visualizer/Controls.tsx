@@ -31,11 +31,8 @@ export default function Controls() {
     }, []);
 
     const handlePlayPause = () => {
-        if (isPlaying) {
-            pause();
-        } else {
-            play();
-        }
+        if (isPlaying) pause();
+        else play();
     };
 
     const handleSpeedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -44,37 +41,44 @@ export default function Controls() {
         setSpeed(newSpeed);
     };
 
+    const handleScrub = (e: React.ChangeEvent<HTMLInputElement>) => {
+        pause();
+        getEngine().setCursor(Number(e.target.value));
+    };
+
     return (
-        <div
-            style={{
-                display: "flex",
-                gap: 8,
-                padding: 10,
-                background: "#1e1e1e",
-                borderTop: "1px solid #333",
-                justifyContent: "center",
-                alignItems: "center",
-            }}
-        >
-            <button onClick={reset}>⏮</button>
-            <button onClick={stepBackward}>⏪</button>
-            <button onClick={handlePlayPause}>{isPlaying ? "⏸" : "▶"}</button>
-            <button onClick={stepForward}>⏩</button>
-            <span style={{ marginLeft: 16, color: "#aaa", fontSize: 14 }}>
-                {cursor} / {total}
-            </span>
-            <div style={{ marginLeft: 16, display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ color: "#aaa", fontSize: 12 }}>Speed:</span>
+        <div style={{ background: "#1e1e1e", borderTop: "1px solid #333", padding: "6px 10px" }}>
+            {total > 0 && (
                 <input
                     type="range"
-                    min="100"
-                    max="2000"
-                    step="100"
-                    value={2100 - speed}
-                    onChange={handleSpeedChange}
-                    style={{ width: 100 }}
+                    min={0}
+                    max={total}
+                    value={cursor}
+                    onChange={handleScrub}
+                    style={{ width: "100%", margin: "0 0 6px", cursor: "pointer" }}
                 />
-                <span style={{ color: "#aaa", fontSize: 12, width: 40 }}>{speed}ms</span>
+            )}
+            <div style={{ display: "flex", gap: 8, justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
+                <button onClick={reset}>⏮</button>
+                <button onClick={stepBackward}>⏪</button>
+                <button onClick={handlePlayPause}>{isPlaying ? "⏸" : "▶"}</button>
+                <button onClick={stepForward}>⏩</button>
+                <span style={{ marginLeft: 8, color: "#aaa", fontSize: 13 }}>
+                    {cursor}/{total}
+                </span>
+                <div style={{ marginLeft: 8, display: "flex", alignItems: "center", gap: 4 }}>
+                    <span style={{ fontSize: 12 }}>🐢</span>
+                    <input
+                        type="range"
+                        min="100"
+                        max="2000"
+                        step="100"
+                        value={2100 - speed}
+                        onChange={handleSpeedChange}
+                        style={{ width: 80 }}
+                    />
+                    <span style={{ fontSize: 12 }}>🐇</span>
+                </div>
             </div>
         </div>
     );

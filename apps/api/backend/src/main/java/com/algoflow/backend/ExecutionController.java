@@ -7,6 +7,8 @@ import java.nio.file.Paths;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +25,7 @@ public class ExecutionController {
 
     private static final Logger log = LoggerFactory.getLogger(ExecutionController.class);
     private static final String RUNNER_PACKAGE = "com.algoflow.runner";
+    private static final Pattern CLASS_NAME_PATTERN = Pattern.compile("public\\s+class\\s+(\\w+)");
 
     @PostMapping("/execute")
     public Map<String, Object> execute(@RequestBody Map<String, String> request) {
@@ -41,7 +44,8 @@ public class ExecutionController {
 
     private List<?> executeJavaCode(String code) throws Exception {
         Path tempDir = Files.createTempDirectory("algo");
-        Path javaFile = tempDir.resolve("Main.java");
+        String className = extractClassName(code);
+        Path javaFile = tempDir.resolve(className + ".java");
         Path transformerJar = Paths.get("../../../packages/java/engine/target/algo-transformer-1.0-SNAPSHOT.jar").toAbsolutePath();
         
         log.debug("Temp directory: {}", tempDir);
@@ -56,7 +60,7 @@ public class ExecutionController {
                 "-d", ".",
                 "-cp", transformerJar.toString(),
                 "-g",
-                "Main.java")
+                className + ".java")
                 .directory(tempDir.toFile())
                 .redirectErrorStream(true)
                 .start();
@@ -74,7 +78,7 @@ public class ExecutionController {
                 "-javaagent:" + transformerJar,
                 "-cp", transformerJar + ":.",
                 "--add-opens", "java.base/java.util=ALL-UNNAMED",
-                "com.algoflow.runner.Main");
+                RUNNER_PACKAGE + "." + className);
             runBuilder.directory(tempDir.toFile());
             runBuilder.environment().put("ALGORITHM_VISUALIZER", "true");
             
@@ -123,6 +127,14 @@ public class ExecutionController {
      * Ensures the user-provided Java code is compiled as com.algoflow.runner.Main.
      * Any existing package declaration is stripped and replaced with the expected one.
      */
+    private String extractClassName(String code) {
+        Matcher m = CLASS_NAME_PATTERN.matcher(code);
+        if (!m.find()) {
+            throw new IllegalArgumentException("No public class found in code");
+        }
+        return m.group(1);
+    }
+
     private String normalizeToRunnerPackage(String code) {
         if (code == null || code.isBlank()) {
             throw new IllegalArgumentException("Code must not be empty");

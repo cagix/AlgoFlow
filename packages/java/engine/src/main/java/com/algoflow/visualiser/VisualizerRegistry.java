@@ -13,8 +13,8 @@ public class VisualizerRegistry {
     private static final Map<Object, PrimitiveArray1DVisualizer> _arrayToVisualizer = new IdentityHashMap<>();
     private static final Map<Object, PrimitiveArray2DVisualizer> _array2DToVisualizer = new IdentityHashMap<>();
     private static LogVisualizer _logVisualizer;
-    private static final Map<String, RecursionTreeVisualizer> _recursionVisualizers = new HashMap<>();
     private static final Map<String, LocalVariablesVisualizer> _localVariablesVisualizers = new HashMap<>();
+    private static CallStackVisualizer _callStackVisualizer;
 
     public static void register(Visualizer visualizer, Object... objects) {
         if (visualizer instanceof ListVisualizer listVis) {
@@ -37,9 +37,19 @@ public class VisualizerRegistry {
         }
     }
     
-    public static void registerRecursion(String methodName, RecursionTreeVisualizer visualizer) {
-        _recursionVisualizers.put(methodName, visualizer);
-        _visualizers.add(visualizer.getCommander());
+    public static void onMethodEnter(String methodName, Object[] args) {
+        if (_callStackVisualizer == null) {
+            _callStackVisualizer = new CallStackVisualizer("CallStack");
+            _visualizers.add(_callStackVisualizer.getCommander());
+            setLayout();
+        }
+        _callStackVisualizer.onEnter(methodName, args);
+    }
+    
+    public static void onMethodExit(String methodName, Object result) {
+        if (_callStackVisualizer != null) {
+            _callStackVisualizer.onExit(methodName, result);
+        }
     }
     
     public static void registerLocalVariables(String methodKey, LocalVariablesVisualizer visualizer) {
@@ -142,26 +152,19 @@ public class VisualizerRegistry {
         }
     }
     
-    public static void onRecursionEnter(String methodName, Object[] args) {
-        RecursionTreeVisualizer visualizer = _recursionVisualizers.get(methodName);
-        if (visualizer != null) {
-            visualizer.onEnter(methodName, args);
-        }
-    }
-    
-    public static void onRecursionExit(String methodName, Object result) {
-        RecursionTreeVisualizer visualizer = _recursionVisualizers.get(methodName);
-        if (visualizer != null) {
-            visualizer.onExit(methodName, result);
-        }
-    }
 
-    public static void onLocalVariableUpdate(String methodKey, Object[] value) {
+
+    public static void onLocalVariableUpdate(String methodKey, int slotIndex, Object value) {
         LocalVariablesVisualizer visualizer = _localVariablesVisualizers.get(methodKey);
-        if (visualizer != null) {
-            String variableName = LocalVariablesVisualizer.getSlotName(methodKey, (Integer) value[0]);
-            Object variableValue = value[1];
-            visualizer.onVariableUpdate(variableName, variableValue);
+        if (visualizer == null) {
+            String methodName = methodKey.substring(methodKey.lastIndexOf('#') + 1, methodKey.lastIndexOf('('));
+            visualizer = new LocalVariablesVisualizer("Locals - " + methodName);
+            registerLocalVariables(methodKey, visualizer);
+            setLayout();
+        }
+        String variableName = LocalVariablesVisualizer.getSlotName(methodKey, slotIndex);
+        if (variableName != null) {
+            visualizer.onVariableUpdate(variableName, value);
         }
     }
     

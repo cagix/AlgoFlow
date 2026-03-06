@@ -12,7 +12,7 @@ public class RecursionInterceptor {
                 @Advice.Origin("#m") String methodName,
                 @Advice.AllArguments Object[] args
         ) {
-            VisualizerRegistry.onRecursionEnter(methodName, args);
+            VisualizerRegistry.onMethodEnter(methodName, args);
         }
     }
     
@@ -22,7 +22,7 @@ public class RecursionInterceptor {
                 @Advice.Origin("#m") String methodName,
                 @Advice.Return(typing = Assigner.Typing.DYNAMIC) Object result
         ) {
-            VisualizerRegistry.onRecursionExit(methodName, result);
+            VisualizerRegistry.onMethodExit(methodName, result);
         }
     }
 }

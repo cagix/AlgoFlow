@@ -1,35 +1,11 @@
 package com.algoflow.runner;
 
-import com.algoflow.annotation.Visualize;
-import com.algoflow.visualiser.Array1DVisualiser;
-
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
-import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 public class BubbleSortExample {
 
-    @Visualize
     ArrayList<Integer> list = new ArrayList<>(Arrays.asList(64, 34, 25, 12, 22, 11, 90));
-
-    static {
-        try {
-            TrustManager[] trustAll = new TrustManager[]{new X509TrustManager() {
-                public X509Certificate[] getAcceptedIssuers() { return null; }
-                public void checkClientTrusted(X509Certificate[] certs, String authType) {}
-                public void checkServerTrusted(X509Certificate[] certs, String authType) {}
-            }};
-            SSLContext sc = SSLContext.getInstance("TLS");
-            sc.init(null, trustAll, new java.security.SecureRandom());
-            HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
-            HttpsURLConnection.setDefaultHostnameVerifier((h, s) -> true);
-        } catch (Exception e) {}
-    }
 
     public static void main(String[] args) {
         new BubbleSortExample().bubbleSort();

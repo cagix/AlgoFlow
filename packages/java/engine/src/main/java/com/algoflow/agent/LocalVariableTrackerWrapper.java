@@ -49,32 +49,10 @@ public class LocalVariableTrackerWrapper implements AsmVisitorWrapper {
         public MethodVisitor visitMethod(int access, String name, String descriptor,
                                          String signature, String[] exceptions) {
             MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
-
-            // Check if method has @VisualizeLocals annotation
-            MethodList<?> methods = instrumentedType.getDeclaredMethods();
-            for (MethodDescription method : methods) {
-                if (method.getName().equals(name) && method.getDescriptor().equals(descriptor)) {
-                    if (method.getDeclaredAnnotations().isAnnotationPresent(
-                            TypeDescription.ForLoadedType.of(com.algoflow.annotation.VisualizeLocals.class))) {
-                        String methodKey = buildMethodKey(method);
-                        return new LocalVariableMethodVisitor(mv, methodKey);
-                    }
-                }
-            }
-            return mv;
-        }
-
-        private String buildMethodKey(MethodDescription method) {
-            StringBuilder sb = new StringBuilder();
-            sb.append(instrumentedType.getName())
-              .append("#")
-              .append(method.getName())
-              .append("(");
-            for (ParameterDescription param : method.getParameters()) {
-                sb.append(param.getType().asErasure().getDescriptor());
-            }
-            sb.append(")");
-            return sb.toString();
+            if (name.equals("<init>") || name.equals("<clinit>")) return mv;
+            
+            String methodKey = instrumentedType.getName() + "#" + name + descriptor;
+            return new LocalVariableMethodVisitor(mv, methodKey);
         }
     }
 
@@ -115,41 +93,16 @@ public class LocalVariableTrackerWrapper implements AsmVisitorWrapper {
         }
 
         private void injectTrackingCall(int storeOpcode, int varIndex) {
-            // Call VisualizerBridge.localVariableListener.accept(MethodName, Object[]{index, value});
-
             super.visitLdcInsn(methodKey);
-
-            // Create Object array: new Object[]{varName, value}
-            super.visitInsn(Opcodes.ICONST_2);
-            super.visitTypeInsn(Opcodes.ANEWARRAY, "java/lang/Object");
-            
-            // array[0] = varIndex
-            super.visitInsn(Opcodes.DUP);
-            super.visitInsn(Opcodes.ICONST_0);
             super.visitLdcInsn(varIndex);
-            super.visitMethodInsn(
-                    Opcodes.INVOKESTATIC,
-                    "java/lang/Integer",
-                    "valueOf",
-                    "(I)Ljava/lang/Integer;",
-                    false
-            );
-            super.visitInsn(Opcodes.AASTORE);
-
             int loadOpcode = getLoadOpcode(storeOpcode);
-
-            // array[1] = value
-            super.visitInsn(Opcodes.DUP);
-            super.visitInsn(Opcodes.ICONST_1);
             super.visitVarInsn(loadOpcode, varIndex);
             boxIfNeeded(storeOpcode);
-            super.visitInsn(Opcodes.AASTORE);
-            
 
             super.visitMethodInsn(Opcodes.INVOKESTATIC,
                 "com/algoflow/visualiser/VisualizerRegistry",
                 "onLocalVariableUpdate",
-                "(Ljava/lang/String;[Ljava/lang/Object;)V",
+                "(Ljava/lang/String;ILjava/lang/Object;)V",
                 false);
         }
 

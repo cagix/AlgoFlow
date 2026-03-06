@@ -41,6 +41,7 @@ export default function JavaEditor() {
                         fontSize: 14,
                         minimap: { enabled: false },
                         automaticLayout: true,
+                        wordWrap: "on",
                     }}
                 />
             </div>
