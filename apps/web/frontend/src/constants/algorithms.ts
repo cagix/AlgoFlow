@@ -9,7 +9,9 @@ export const ALGORITHMS: Algorithm[] = [
     {
         name: "Bubble Sort",
         category: "Sorting",
-        code: `public class Main {
+        code: `package com.algoflow.runner;
+
+public class Main {
     private int[] arr = {5, 3, 8, 1, 9, 2, 7};
 
     public static void main(String[] args) {
@@ -33,7 +35,9 @@ export const ALGORITHMS: Algorithm[] = [
     {
         name: "Selection Sort",
         category: "Sorting",
-        code: `public class Main {
+        code: `package com.algoflow.runner;
+
+public class Main {
     private int[] arr = {5, 3, 8, 1, 9, 2, 7};
 
     public static void main(String[] args) {
@@ -59,7 +63,9 @@ export const ALGORITHMS: Algorithm[] = [
     {
         name: "Insertion Sort",
         category: "Sorting",
-        code: `public class Main {
+        code: `package com.algoflow.runner;
+
+public class Main {
     private int[] arr = {5, 3, 8, 1, 9, 2, 7};
 
     public static void main(String[] args) {
@@ -83,7 +89,9 @@ export const ALGORITHMS: Algorithm[] = [
     {
         name: "Quick Sort",
         category: "Sorting",
-        code: `public class Main {
+        code: `package com.algoflow.runner;
+
+public class Main {
     private int[] arr = {5, 3, 8, 1, 9, 2, 7};
 
     public static void main(String[] args) {
@@ -119,7 +127,9 @@ export const ALGORITHMS: Algorithm[] = [
     {
         name: "Merge Sort",
         category: "Sorting",
-        code: `public class Main {
+        code: `package com.algoflow.runner;
+
+public class Main {
     private int[] arr = {5, 3, 8, 1, 9, 2, 7};
     private int[] temp = new int[7];
 
@@ -155,7 +165,9 @@ export const ALGORITHMS: Algorithm[] = [
     {
         name: "Binary Search",
         category: "Searching",
-        code: `public class Main {
+        code: `package com.algoflow.runner;
+
+public class Main {
     private int[] arr = {1, 3, 5, 7, 9, 11, 13, 15, 17};
 
     public static void main(String[] args) {
@@ -177,7 +189,9 @@ export const ALGORITHMS: Algorithm[] = [
     {
         name: "Linear Search",
         category: "Searching",
-        code: `public class Main {
+        code: `package com.algoflow.runner;
+
+public class Main {
     private int[] arr = {5, 3, 8, 1, 9, 2, 7};
 
     public static void main(String[] args) {
@@ -196,7 +210,9 @@ export const ALGORITHMS: Algorithm[] = [
     {
         name: "BFS",
         category: "Graphs",
-        code: `import java.util.*;
+        code: `package com.algoflow.runner;
+
+import java.util.*;
 import com.algoflow.annotation.Graph;
 
 public class Main {
@@ -234,7 +250,9 @@ public class Main {
     {
         name: "DFS",
         category: "Graphs",
-        code: `import com.algoflow.annotation.Graph;
+        code: `package com.algoflow.runner;
+
+import com.algoflow.annotation.Graph;
 
 public class Main {
     @Graph
@@ -266,7 +284,9 @@ public class Main {
     {
         name: "KMP String Search",
         category: "Strings",
-        code: `public class Main {
+        code: `package com.algoflow.runner;
+
+public class Main {
     public static void main(String[] args) {
         new Main().kmpSearch("ABABDABACDABABCABAB", "ABABCABAB");
     }
@@ -309,7 +329,9 @@ public class Main {
     {
         name: "Heap Sort",
         category: "Sorting",
-        code: `public class Main {
+        code: `package com.algoflow.runner;
+
+public class Main {
     private int[] arr = {5, 3, 8, 1, 9, 2, 7};
 
     public static void main(String[] args) {
@@ -339,7 +361,9 @@ public class Main {
     {
         name: "Counting Sort",
         category: "Sorting",
-        code: `public class Main {
+        code: `package com.algoflow.runner;
+
+public class Main {
     private int[] arr = {4, 2, 2, 8, 3, 3, 1};
 
     public static void main(String[] args) {
@@ -362,7 +386,9 @@ public class Main {
     {
         name: "Dijkstra's Shortest Path",
         category: "Graphs",
-        code: `import java.util.*;
+        code: `package com.algoflow.runner;
+
+import java.util.*;
 import com.algoflow.annotation.Graph;
 
 public class Main {
@@ -403,7 +429,9 @@ public class Main {
     {
         name: "Topological Sort (DFS)",
         category: "Graphs",
-        code: `import java.util.*;
+        code: `package com.algoflow.runner;
+
+import java.util.*;
 import com.algoflow.annotation.Graph;
 
 public class Main {
@@ -442,7 +470,9 @@ public class Main {
     {
         name: "Fibonacci (Memoized)",
         category: "Dynamic Programming",
-        code: `import java.util.*;
+        code: `package com.algoflow.runner;
+
+import java.util.*;
 
 public class Main {
     private Map<Integer, Long> memo = new HashMap<>();
@@ -463,7 +493,9 @@ public class Main {
     {
         name: "Longest Common Subsequence",
         category: "Dynamic Programming",
-        code: `public class Main {
+        code: `package com.algoflow.runner;
+
+public class Main {
     private String s1 = "ABCBDAB";
     private String s2 = "BDCAB";
 
@@ -489,7 +521,9 @@ public class Main {
     {
         name: "0/1 Knapsack",
         category: "Dynamic Programming",
-        code: `public class Main {
+        code: `package com.algoflow.runner;
+
+public class Main {
     private int[] weights = {2, 3, 4, 5};
     private int[] values = {3, 4, 5, 6};
     private int capacity = 8;
@@ -515,7 +549,9 @@ public class Main {
     {
         name: "Longest Increasing Subsequence",
         category: "Dynamic Programming",
-        code: `public class Main {
+        code: `package com.algoflow.runner;
+
+public class Main {
     private int[] arr = {10, 9, 2, 5, 3, 7, 101, 18};
 
     public static void main(String[] args) {
@@ -542,7 +578,9 @@ public class Main {
     {
         name: "N-Queens",
         category: "Backtracking",
-        code: `public class Main {
+        code: `package com.algoflow.runner;
+
+public class Main {
     private int n = 6;
     private int[] queens = new int[6];
 
@@ -574,7 +612,9 @@ public class Main {
     {
         name: "Sudoku Solver",
         category: "Backtracking",
-        code: `public class Main {
+        code: `package com.algoflow.runner;
+
+public class Main {
     private int[][] board = {
         {5,3,0,0,7,0,0,0,0},
         {6,0,0,1,9,5,0,0,0},
@@ -623,7 +663,9 @@ public class Main {
     {
         name: "Tower of Hanoi",
         category: "Divide & Conquer",
-        code: `public class Main {
+        code: `package com.algoflow.runner;
+
+public class Main {
     public static void main(String[] args) {
         new Main().hanoi(4, "A", "C", "B");
     }
@@ -639,7 +681,9 @@ public class Main {
     {
         name: "Matrix Chain Multiplication",
         category: "Dynamic Programming",
-        code: `public class Main {
+        code: `package com.algoflow.runner;
+
+public class Main {
     private int[] dims = {10, 30, 5, 60, 10};
 
     public static void main(String[] args) {
@@ -666,7 +710,9 @@ public class Main {
     {
         name: "Floyd-Warshall",
         category: "Graphs",
-        code: `import com.algoflow.annotation.Graph;
+        code: `package com.algoflow.runner;
+
+import com.algoflow.annotation.Graph;
 
 public class Main {
     @Graph
@@ -700,7 +746,9 @@ public class Main {
     {
         name: "Prim's MST",
         category: "Graphs",
-        code: `import java.util.*;
+        code: `package com.algoflow.runner;
+
+import java.util.*;
 import com.algoflow.annotation.Graph;
 
 public class Main {
@@ -738,7 +786,9 @@ public class Main {
     {
         name: "Bellman-Ford",
         category: "Graphs",
-        code: `import java.util.*;
+        code: `package com.algoflow.runner;
+
+import java.util.*;
 import com.algoflow.annotation.Graph;
 
 public class Main {
