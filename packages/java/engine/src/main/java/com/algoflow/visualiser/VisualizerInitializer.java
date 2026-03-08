@@ -66,7 +66,7 @@ public class VisualizerInitializer {
     
     public static boolean registerLocalValue(String name, Object value) {
         if (VisualizerRegistry.isRegistered(value)) return false;
-        boolean is2D = (value instanceof List<?> list) && !list.isEmpty() && list.get(0) instanceof List;
+        boolean is2D = (value instanceof List<?> list) && !list.isEmpty() && list.getFirst() instanceof List;
         if (!registerValue(name, value, is2D)) return false;
         VisualizerRegistry.setLayout();
         return true;

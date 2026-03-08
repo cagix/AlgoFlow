@@ -80,16 +80,20 @@ public class LocalVariableTrackerWrapper implements AsmVisitorWrapper {
 
         @Override
         public void visitVarInsn(int opcode, int varIndex) {
-            // First, execute the original store instruction
             super.visitVarInsn(opcode, varIndex);
 
-            // Check if this is a store instruction
             if (opcode == Opcodes.ISTORE || opcode == Opcodes.LSTORE ||
                 opcode == Opcodes.FSTORE || opcode == Opcodes.DSTORE ||
                 opcode == Opcodes.ASTORE) {
                 
                 injectTrackingCall(opcode, varIndex);
             }
+        }
+
+        @Override
+        public void visitIincInsn(int varIndex, int increment) {
+            super.visitIincInsn(varIndex, increment);
+            injectTrackingCall(Opcodes.ISTORE, varIndex);
         }
 
         private void injectTrackingCall(int storeOpcode, int varIndex) {
