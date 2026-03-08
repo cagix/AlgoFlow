@@ -89,21 +89,33 @@ public class VisualizerRegistry {
     }
     
     public static void onMethodEnter(String methodName, Object[] args) {
-        if (_callStackVisualizer == null) {
-            _callStackVisualizer = new CallStackVisualizer("CallStack");
-            _visualizers.add(_callStackVisualizer.getCommander());
-            setLayout();
+        if (_processing) return;
+        _processing = true;
+        try {
+            highlightLine(getCallerCallerLineNumber());
+            if (_callStackVisualizer == null) {
+                _callStackVisualizer = new CallStackVisualizer("CallStack");
+                _visualizers.add(_callStackVisualizer.getCommander());
+                setLayout();
+            }
+            _callStackVisualizer.onEnter(methodName, args);
+            highlightLine(getCallerLineNumber());
+        } finally {
+            _processing = false;
         }
-        highlightLine(getCallerCallerLineNumber());
-        _callStackVisualizer.onEnter(methodName, args);
-        highlightLine(getCallerLineNumber());
     }
     
     public static void onMethodExit(String methodName, Object result) {
-        if (_callStackVisualizer != null) {
-            highlightLine(getCallerLineNumber());
-            _callStackVisualizer.onExit(methodName, result);
-            highlightLine(getCallerCallerLineNumber());
+        if (_processing) return;
+        _processing = true;
+        try {
+            if (_callStackVisualizer != null) {
+                highlightLine(getCallerLineNumber());
+                _callStackVisualizer.onExit(methodName, result);
+                highlightLine(getCallerCallerLineNumber());
+            }
+        } finally {
+            _processing = false;
         }
     }
     
@@ -338,15 +350,25 @@ public class VisualizerRegistry {
     }
 
     public static void onPrintln(String message) {
-        if (!isCalledFromRunner("println")) return;
-        highlightLine(getCallerLineNumber());
-        if (_logVisualizer != null) _logVisualizer.println(message);
+        if (_processing) return;
+        _processing = true;
+        try {
+            if (!isCalledFromRunner("println")) return;
+            if (_logVisualizer != null) _logVisualizer.println(message);
+        } finally {
+            _processing = false;
+        }
     }
 
     public static void onPrint(String message) {
-        if (!isCalledFromRunner("print")) return;
-        highlightLine(getCallerLineNumber());
-        if (_logVisualizer != null) _logVisualizer.print(message);
+        if (_processing) return;
+        _processing = true;
+        try {
+            if (!isCalledFromRunner("print")) return;
+            if (_logVisualizer != null) _logVisualizer.print(message);
+        } finally {
+            _processing = false;
+        }
     }
     
 
