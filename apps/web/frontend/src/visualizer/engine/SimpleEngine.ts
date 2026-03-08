@@ -373,8 +373,9 @@ export class SimpleEngine {
     next(): boolean {
         if (this.cursor >= this.chunks.length) return false;
 
-        // Swap pattern: patch → depatch → patch → depatch (with possible CodeTracer in between)
-        // Collect array-relevant commands from current chunk onward, stopping at second patch
+        // Swap pattern: patch(k,i,v1) → depatch(k,i) → patch(k,j,v2) → depatch(k,j)
+        // with possible CodeTracer/select/deselect noise in between.
+        // Only look in current chunk for first patch, then scan a few chunks for second.
         const cur = this.chunks[this.cursor];
         let arrayPatch: Command | null = null;
         for (const c of cur.commands) {
@@ -389,14 +390,14 @@ export class SimpleEngine {
 
         if (arrayPatch) {
             const k = arrayPatch.key!;
-            // Scan forward for: depatch(k) then patch(k) — the second half of a swap
+            const idxA = arrayPatch.args[0], valA = arrayPatch.args[1];
+            // Scan forward for depatch(k) then patch(k) — but only check next few chunks
             let foundDepatch = false;
-            for (let i = this.cursor; i < this.chunks.length; i++) {
+            const maxScan = Math.min(this.cursor + 6, this.chunks.length);
+            for (let i = this.cursor; i < maxScan; i++) {
                 for (const c of this.chunks[i].commands) {
                     if (c.key === k && c.method === 'depatch') foundDepatch = true;
-                    if (c.key === k && c.method === 'patch' && foundDepatch) {
-                        // Verify it's a real swap: values cross
-                        const idxA = arrayPatch!.args[0], valA = arrayPatch!.args[1];
+                    else if (c.key === k && c.method === 'patch' && foundDepatch) {
                         const idxB = c.args[0], valB = c.args[1];
                         if (idxA !== idxB) {
                             const oldA = this.tracers[k].data[idxA]?.value;
@@ -406,12 +407,12 @@ export class SimpleEngine {
                                 consumeCount = i - this.cursor + 1;
                             }
                         }
-                        break;
+                        // Found second patch on same key — stop regardless
+                        i = maxScan; break;
+                    } else if (c.key === k && c.method === 'set') {
+                        i = maxScan; break;
                     }
-                    // Abort if array gets reset
-                    if (c.key === k && c.method === 'set') break;
                 }
-                if (swap || (!foundDepatch && i > this.cursor)) break;
             }
         }
 
