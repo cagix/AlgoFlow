@@ -7,10 +7,9 @@ export async function executeJavaCode(code: string): Promise<{ commands: any[]; 
         body: JSON.stringify({ code }),
     });
 
-    if (!response.ok) {
-        throw new Error(`Execution failed: ${response.statusText}`);
-    }
-
     const data = await response.json();
+    if (!response.ok || data.error) {
+        throw new Error(data.error || `Execution failed: ${response.statusText}`);
+    }
     return { commands: data.commands || data, code: data.code };
 }

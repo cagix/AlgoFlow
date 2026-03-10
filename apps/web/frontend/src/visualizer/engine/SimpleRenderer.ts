@@ -239,17 +239,18 @@ export class SimpleRenderer {
     private renderLog(logs: any[], title?: string) {
         if (!this.ctx) return;
         
+        const isError = title === 'Error';
         let y = 30;
         
         if (title) {
-            this.ctx.fillStyle = '#aaa';
-            this.ctx.font = '14px sans-serif';
+            this.ctx.fillStyle = isError ? '#f44336' : '#aaa';
+            this.ctx.font = isError ? 'bold 16px sans-serif' : '14px sans-serif';
             this.ctx.textAlign = 'left';
-            this.ctx.fillText(title, 20, y);
-            y += 25;
+            this.ctx.fillText(isError ? '⚠ Error' : title, 20, y);
+            y += isError ? 30 : 25;
         }
         
-        this.ctx.fillStyle = '#fff';
+        this.ctx.fillStyle = isError ? '#ff8a80' : '#fff';
         this.ctx.font = '14px monospace';
         
         logs.forEach(log => {
@@ -402,17 +403,18 @@ export class SimpleRenderer {
     private renderLogInBounds(logs: any[], title: string | undefined, x: number, y: number) {
         if (!this.ctx) return;
         
+        const isError = title === 'Error';
         let ly = y + 20;
         
         if (title) {
-            this.ctx.fillStyle = '#aaa';
-            this.ctx.font = '12px sans-serif';
+            this.ctx.fillStyle = isError ? '#f44336' : '#aaa';
+            this.ctx.font = isError ? 'bold 14px sans-serif' : '12px sans-serif';
             this.ctx.textAlign = 'left';
-            this.ctx.fillText(title, x + 10, ly);
-            ly += 20;
+            this.ctx.fillText(isError ? '⚠ Error' : title, x + 10, ly);
+            ly += isError ? 24 : 20;
         }
         
-        this.ctx.fillStyle = '#fff';
+        this.ctx.fillStyle = isError ? '#ff8a80' : '#fff';
         this.ctx.font = '12px monospace';
         
         logs.forEach(log => {

@@ -12,6 +12,7 @@ import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -28,17 +29,18 @@ public class ExecutionController {
     private static final Pattern CLASS_NAME_PATTERN = Pattern.compile("public\\s+class\\s+(\\w+)");
 
     @PostMapping("/execute")
-    public Map<String, Object> execute(@RequestBody Map<String, String> request) {
+    public ResponseEntity<Map<String, Object>> execute(@RequestBody Map<String, String> request) {
         String code = request.get("code");
         log.info("Received execution request, code length: {}", code.length());
         
         try {
             Map<String, Object> result = executeJavaCode(code);
             log.info("Execution successful");
-            return result;
+            return ResponseEntity.ok(result);
         } catch (Exception e) {
             log.error("Execution failed: {}", e.getMessage(), e);
-            return Map.of("error", e.getMessage());
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", e.getMessage() != null ? e.getMessage() : "Unknown error"));
         }
     }
 
@@ -62,16 +64,15 @@ public class ExecutionController {
                 "-g",
                 className + ".java")
                 .directory(tempDir.toFile())
-                .redirectErrorStream(true)
                 .start();
             
+            String compileStderr = new String(compile.getErrorStream().readAllBytes());
             int compileExitCode = compile.waitFor();
             log.debug("Compilation exit code: {}", compileExitCode);
             
             if (compileExitCode != 0) {
-                String compileError = new String(compile.getInputStream().readAllBytes());
-                log.error("Compilation failed: {}", compileError);
-                throw new RuntimeException("Compilation failed: " + compileError);
+                log.error("Compilation failed: {}", compileStderr);
+                throw new RuntimeException(compileStderr);
             }
             
             ProcessBuilder runBuilder = new ProcessBuilder("java",
@@ -86,18 +87,20 @@ public class ExecutionController {
             
             Process run = runBuilder.start();
             run.getOutputStream().close();
+            String runOutput = new String(run.getInputStream().readAllBytes());
+            String runStderr = new String(run.getErrorStream().readAllBytes());
             int runExitCode = run.waitFor();
             
-            String runOutput = new String(run.getInputStream().readAllBytes());
             if (log.isDebugEnabled()) {
                 log.debug("Java process output:\n{}", runOutput);
+                log.debug("Java process stderr:\n{}", runStderr);
             }
             
             log.debug("Java process exit code: {}", runExitCode);
             
             if (runExitCode != 0) {
-                log.error("Java execution failed: {}", runOutput);
-                throw new RuntimeException("Execution failed: " + runOutput);
+                log.error("Java execution failed: {}", runStderr);
+                throw new RuntimeException(runStderr.isBlank() ? runOutput : runStderr);
             }
             
             Path jsonFile = tempDir.resolve("visualization.json");

@@ -2,14 +2,12 @@ import Editor from "@monaco-editor/react";
 import { useEffect, useRef, useState } from "react";
 import { loadCommands, play, subscribe } from "./visualizer/visualizerEngine";
 import { executeJavaCode } from "./api/backend";
-import { DEFAULT_JAVA_CODE, SAMPLE_COMMANDS } from "./constants/sampleCode";
-import { ALGORITHMS, CATEGORIES, TEMPLATES, TEMPLATE_CATEGORIES } from "./constants/algorithms";
+import { DEFAULT_JAVA_CODE, ALGORITHMS, CATEGORIES, TEMPLATES, TEMPLATE_CATEGORIES } from "./constants/algorithms";
 import { engine } from "./visualizer/visualizerEngine";
 
 export default function JavaEditor() {
     const [code, setCode] = useState(DEFAULT_JAVA_CODE);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const [menuOpen, setMenuOpen] = useState(false);
     const [menuTab, setMenuTab] = useState<'algorithms' | 'templates'>('algorithms');
     const editorRef = useRef<any>(null);
@@ -50,7 +48,6 @@ export default function JavaEditor() {
 
     const handleRun = async () => {
         setLoading(true);
-        setError(null);
         
         try {
             const result = await executeJavaCode(code);
@@ -58,9 +55,14 @@ export default function JavaEditor() {
             loadCommands(result.commands);
             play();
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Execution failed');
+            const msg = err instanceof Error ? err.message : 'Execution failed';
             console.error('Execution error:', err);
-            loadCommands(SAMPLE_COMMANDS);
+            loadCommands([
+                {"key":"log","method":"LogTracer","args":["Error"]},
+                {"key":null,"method":"setRoot","args":["log"]},
+                {"key":"log","method":"println","args":[msg]},
+                {"key":null,"method":"delay","args":[]},
+            ]);
             play();
         } finally {
             setLoading(false);
@@ -185,7 +187,6 @@ export default function JavaEditor() {
                         </div>
                     )}
                 </div>
-                {error && <span style={{ color: "#f44336", fontSize: 12, flex: 1 }}>{error}</span>}
                 <div style={{ flex: 1 }} />
                 <button
                     onClick={handleRun}
