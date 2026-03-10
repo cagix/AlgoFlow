@@ -1,6 +1,6 @@
 import Editor from "@monaco-editor/react";
 import { useEffect, useRef, useState } from "react";
-import { loadCommands, play, subscribe } from "./visualizer/visualizerEngine";
+import { loadCommands, play, reset, subscribe } from "./visualizer/visualizerEngine";
 import { executeJavaCode } from "./api/backend";
 import { DEFAULT_JAVA_CODE, ALGORITHMS, CATEGORIES, TEMPLATES, TEMPLATE_CATEGORIES } from "./constants/algorithms";
 import { registerJavaCompletions } from "./constants/javaCompletions";
@@ -114,7 +114,7 @@ export default function JavaEditor() {
                                     {TEMPLATES.filter(t => t.category === cat).map(t => (
                                         <div
                                             key={t.name}
-                                            onClick={() => { setCode(t.code); setMenuOpen(null); }}
+                                            onClick={() => { setCode(t.code); setMenuOpen(null); reset(); }}
                                             style={{ padding: "6px 16px", fontSize: 13, color: "#ddd", cursor: "pointer" }}
                                             onMouseEnter={e => (e.currentTarget.style.background = "#333")}
                                             onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
@@ -157,7 +157,7 @@ export default function JavaEditor() {
                                     {ALGORITHMS.filter(a => a.category === cat).map(a => (
                                         <div
                                             key={a.name}
-                                            onClick={() => { setCode(a.code); setMenuOpen(null); }}
+                                            onClick={() => { setCode(a.code); setMenuOpen(null); reset(); }}
                                             style={{ padding: "6px 16px", fontSize: 13, color: "#ddd", cursor: "pointer" }}
                                             onMouseEnter={e => (e.currentTarget.style.background = "#333")}
                                             onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
@@ -178,7 +178,7 @@ export default function JavaEditor() {
                     language="java"
                     theme="vs-dark"
                     value={code}
-                    onChange={(v) => setCode(v ?? "")}
+                    onChange={(v) => { setCode(v ?? ""); reset(); }}
                     onMount={handleMount}
                     options={{
                         fontSize: 14,
