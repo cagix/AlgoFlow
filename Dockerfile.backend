@@ -1,0 +1,27 @@
+FROM maven:3.9-amazoncorretto-21 AS build
+
+# Build engine JAR
+COPY packages/java/engine /build/engine
+WORKDIR /build/engine
+RUN mvn clean package -q -DskipTests
+
+# Build backend JAR
+COPY apps/api/backend /build/backend
+WORKDIR /build/backend
+RUN mvn clean package -q -DskipTests
+
+# Runtime
+FROM amazoncorretto:21
+
+COPY --from=build /build/engine/target/algo-transformer-1.0-SNAPSHOT.jar /app/engine.jar
+COPY --from=build /build/backend/target/algo-backend-1.0.0.jar /app/backend.jar
+
+WORKDIR /app
+
+ENV ENGINE_JAR_PATH=/app/engine.jar
+
+EXPOSE 8080
+
+CMD ["java", "-jar", "backend.jar", \
+     "--engine.jar.path=/app/engine.jar", \
+     "--server.port=8080"]

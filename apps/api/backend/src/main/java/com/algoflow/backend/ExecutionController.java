@@ -13,7 +13,6 @@ import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -21,12 +20,14 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @RestController
-@CrossOrigin(origins = "http://localhost:5173")
 public class ExecutionController {
 
     private static final Logger log = LoggerFactory.getLogger(ExecutionController.class);
     private static final String RUNNER_PACKAGE = "com.algoflow.runner";
     private static final Pattern CLASS_NAME_PATTERN = Pattern.compile("public\\s+class\\s+(\\w+)");
+
+    @org.springframework.beans.factory.annotation.Value("${engine.jar.path:../../../packages/java/engine/target/algo-transformer-1.0-SNAPSHOT.jar}")
+    private String engineJarPath;
 
     @PostMapping("/execute")
     public ResponseEntity<Map<String, Object>> execute(@RequestBody Map<String, String> request) {
@@ -48,7 +49,7 @@ public class ExecutionController {
         Path tempDir = Files.createTempDirectory("algo");
         String className = extractClassName(code);
         Path javaFile = tempDir.resolve(className + ".java");
-        Path transformerJar = Paths.get("../../../packages/java/engine/target/algo-transformer-1.0-SNAPSHOT.jar").toAbsolutePath();
+        Path transformerJar = Paths.get(engineJarPath).toAbsolutePath();
         
         log.debug("Temp directory: {}", tempDir);
         log.debug("Transformer JAR: {}", transformerJar);
