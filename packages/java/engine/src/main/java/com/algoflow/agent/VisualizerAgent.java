@@ -114,6 +114,7 @@ public class VisualizerAgent {
                             .visit(Advice.to(RecursionInterceptor.ExitInterceptor.class)
                                     .on(not(isConstructor().or(isTypeInitializer()))))
                             .visit(new LocalVariableTrackerWrapper())
+                            .visit(new FieldAccessWrapper())
                             .visit(new ArrayAccessWrapper());
                 })
                 .type(ElementMatchers.is(java.util.ArrayList.class)
@@ -150,9 +151,9 @@ public class VisualizerAgent {
                     System.out.println("[VisualizerAgent] Transforming PrintStream");
                     return builder
                             .visit(Advice.to(PrintStreamInterceptor.PrintlnInterceptor.class)
-                                    .on(named("println").and(takesArguments(String.class))))
+                                    .on(named("writeln").and(takesArguments(String.class))))
                             .visit(Advice.to(PrintStreamInterceptor.PrintInterceptor.class)
-                                    .on(named("print").and(takesArguments(String.class))));
+                                    .on(named("write").and(takesArguments(String.class))));
                 })
                 .type(ElementMatchers.isSubTypeOf(java.util.Iterator.class)
                         .and(nameStartsWith("java.util.")))

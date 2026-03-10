@@ -13,6 +13,7 @@ public class VisualizerRegistry {
     private static final Map<Object, PrimitiveArray1DVisualizer> _arrayToVisualizer = new IdentityHashMap<>();
     private static final Map<Object, PrimitiveArray2DVisualizer> _array2DToVisualizer = new IdentityHashMap<>();
     private static final Map<Object, GraphVisualizer> _graphToVisualizer = new IdentityHashMap<>();
+    private static final List<TreeVisualizer> _treeVisualizers = new ArrayList<>();
     private static LogVisualizer _logVisualizer;
     private static final Map<String, LocalVariablesVisualizer> _localVariablesVisualizers = new HashMap<>();
     private static CallStackVisualizer _callStackVisualizer;
@@ -20,7 +21,8 @@ public class VisualizerRegistry {
 
     public static boolean isRegistered(Object obj) {
         return _objectToVisualizer.containsKey(obj) || _arrayToVisualizer.containsKey(obj)
-                || _array2DToVisualizer.containsKey(obj) || _graphToVisualizer.containsKey(obj);
+                || _array2DToVisualizer.containsKey(obj) || _graphToVisualizer.containsKey(obj)
+                || _treeVisualizers.stream().anyMatch(t -> t.isTrackedNode(obj));
     }
 
     public static void register(Visualizer visualizer, Object... objects) {
@@ -49,6 +51,11 @@ public class VisualizerRegistry {
         }
     }
     
+    public static void registerTree(TreeVisualizer visualizer) {
+        _visualizers.add(visualizer.getCommander());
+        _treeVisualizers.add(visualizer);
+    }
+
     public static void registerGraph(GraphVisualizer visualizer, Object graphObj) {
         _visualizers.add(visualizer.getCommander());
         _graphToVisualizer.put(graphObj, visualizer);
@@ -355,6 +362,22 @@ public class VisualizerRegistry {
         try {
             if (!isCalledFromRunner("println")) return;
             if (_logVisualizer != null) _logVisualizer.println(message);
+        } finally {
+            _processing = false;
+        }
+    }
+
+    public static void onFieldSet(Object owner, String fieldName, int lineNumber) {
+        if (_processing) return;
+        _processing = true;
+        try {
+            if (lineNumber > 0) highlightLine(lineNumber);
+            for (TreeVisualizer tv : _treeVisualizers) {
+                if (tv.isTrackedNode(owner)) {
+                    tv.onFieldSet(owner, fieldName);
+                    return;
+                }
+            }
         } finally {
             _processing = false;
         }

@@ -1,9 +1,9 @@
 package com.algoflow.visualiser;
 
 import com.algoflow.annotation.Graph;
+import com.algoflow.annotation.Tree;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.*;
 
 public class VisualizerInitializer {
@@ -35,7 +35,7 @@ public class VisualizerInitializer {
             field.setAccessible(true);
             try {
                 Object value = field.get(instance);
-                if (value != null && registerField(field, value)) {
+                if (registerField(field, value, instance)) {
                     registered = true;
                 }
             } catch (IllegalAccessException e) {
@@ -46,7 +46,7 @@ public class VisualizerInitializer {
         if (registered) VisualizerRegistry.setLayout();
     }
     
-    private static boolean registerField(Field field, Object value) {
+    private static boolean registerField(Field field, Object value, Object instance) {
         String name = field.getName();
         
         // Check for @Graph annotation first
@@ -61,10 +61,19 @@ public class VisualizerInitializer {
             return true;
         }
         
-        return registerValue(name, value, is2DList(field));
+        // Check for @Tree annotation
+        if (field.isAnnotationPresent(Tree.class)) {
+            TreeVisualizer vis = new TreeVisualizer(name, value, field.getType());
+            vis.setRootOwner(instance, name);
+            VisualizerRegistry.registerTree(vis);
+            return true;
+        }
+        
+        return value != null && registerValue(name, value, is2DList(field));
     }
     
     public static boolean registerLocalValue(String name, Object value) {
+        if (value == null) return false;
         if (VisualizerRegistry.isRegistered(value)) return false;
         boolean is2D = (value instanceof List<?> list) && !list.isEmpty() && list.getFirst() instanceof List;
         if (!registerValue(name, value, is2D)) return false;
