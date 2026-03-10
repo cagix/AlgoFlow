@@ -77,6 +77,7 @@ public class ExecutionController {
             }
             
             ProcessBuilder runBuilder = new ProcessBuilder("java",
+                "-Xmx512m",
                 "-javaagent:" + transformerJar,
                 "-cp", transformerJar + ":.",
                 "--add-opens", "java.base/java.util=ALL-UNNAMED",
