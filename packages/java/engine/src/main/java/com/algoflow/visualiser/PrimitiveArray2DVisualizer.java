@@ -37,11 +37,13 @@ public class PrimitiveArray2DVisualizer implements Visualizer {
     private int findRowIndex(Object rowArray) {
         if (_array instanceof Object[][] arr) {
             for (int i = 0; i < arr.length; i++) {
-                if (arr[i] == rowArray) return i;
+                if (arr[i] == rowArray)
+                    return i;
             }
         } else if (_array instanceof int[][] arr) {
             for (int i = 0; i < arr.length; i++) {
-                if (arr[i] == rowArray) return i;
+                if (arr[i] == rowArray)
+                    return i;
             }
         }
         return -1;

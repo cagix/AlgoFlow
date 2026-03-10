@@ -23,9 +23,9 @@ public class FieldAccessWrapper implements AsmVisitorWrapper {
 
     @Override
     public ClassVisitor wrap(TypeDescription instrumentedType, ClassVisitor classVisitor,
-                             Implementation.Context implementationContext, TypePool typePool,
-                             FieldList<FieldDescription.InDefinedShape> fields,
-                             MethodList<?> methods, int writerFlags, int readerFlags) {
+            Implementation.Context implementationContext, TypePool typePool,
+            FieldList<FieldDescription.InDefinedShape> fields, MethodList<?> methods, int writerFlags,
+            int readerFlags) {
         return new FieldAccessClassVisitor(classVisitor);
     }
 
@@ -35,8 +35,8 @@ public class FieldAccessWrapper implements AsmVisitorWrapper {
         }
 
         @Override
-        public MethodVisitor visitMethod(int access, String name, String descriptor,
-                                         String signature, String[] exceptions) {
+        public MethodVisitor visitMethod(int access, String name, String descriptor, String signature,
+                String[] exceptions) {
             MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
             return new FieldAccessMethodVisitor(mv);
         }
@@ -72,11 +72,8 @@ public class FieldAccessWrapper implements AsmVisitorWrapper {
                 super.visitVarInsn(Opcodes.ALOAD, ownerSlot);
                 super.visitLdcInsn(name);
                 super.visitLdcInsn(currentLine);
-                super.visitMethodInsn(Opcodes.INVOKESTATIC,
-                        "com/algoflow/visualiser/VisualizerRegistry",
-                        "onFieldSet",
-                        "(Ljava/lang/Object;Ljava/lang/String;I)V",
-                        false);
+                super.visitMethodInsn(Opcodes.INVOKESTATIC, "com/algoflow/visualiser/VisualizerRegistry", "onFieldSet",
+                        "(Ljava/lang/Object;Ljava/lang/String;I)V", false);
                 return;
             }
             if (opcode == Opcodes.PUTFIELD && isPrimitiveField(descriptor)) {
@@ -94,11 +91,8 @@ public class FieldAccessWrapper implements AsmVisitorWrapper {
                 super.visitVarInsn(Opcodes.ALOAD, ownerSlot);
                 super.visitLdcInsn(name);
                 super.visitLdcInsn(currentLine);
-                super.visitMethodInsn(Opcodes.INVOKESTATIC,
-                        "com/algoflow/visualiser/VisualizerRegistry",
-                        "onFieldSet",
-                        "(Ljava/lang/Object;Ljava/lang/String;I)V",
-                        false);
+                super.visitMethodInsn(Opcodes.INVOKESTATIC, "com/algoflow/visualiser/VisualizerRegistry", "onFieldSet",
+                        "(Ljava/lang/Object;Ljava/lang/String;I)V", false);
                 return;
             }
             super.visitFieldInsn(opcode, owner, name, descriptor);
@@ -117,7 +111,7 @@ public class FieldAccessWrapper implements AsmVisitorWrapper {
                 case 'J' -> super.visitVarInsn(Opcodes.LSTORE, slot);
                 case 'F' -> super.visitVarInsn(Opcodes.FSTORE, slot);
                 case 'D' -> super.visitVarInsn(Opcodes.DSTORE, slot);
-                default  -> super.visitVarInsn(Opcodes.ISTORE, slot);
+                default -> super.visitVarInsn(Opcodes.ISTORE, slot);
             }
         }
 
@@ -126,7 +120,7 @@ public class FieldAccessWrapper implements AsmVisitorWrapper {
                 case 'J' -> super.visitVarInsn(Opcodes.LLOAD, slot);
                 case 'F' -> super.visitVarInsn(Opcodes.FLOAD, slot);
                 case 'D' -> super.visitVarInsn(Opcodes.DLOAD, slot);
-                default  -> super.visitVarInsn(Opcodes.ILOAD, slot);
+                default -> super.visitVarInsn(Opcodes.ILOAD, slot);
             }
         }
     }

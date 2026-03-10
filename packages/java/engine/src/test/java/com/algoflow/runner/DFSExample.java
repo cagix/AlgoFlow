@@ -5,17 +5,11 @@ import com.algoflow.annotation.Graph;
 public class DFSExample {
 
     // 0 — 1 — 3 — 5
-    // |   |       |
+    // | | |
     // 2 — 4 ------
     @Graph
-    int[][] adjMatrix = {
-        {0, 1, 1, 0, 0, 0},
-        {1, 0, 0, 1, 1, 0},
-        {1, 0, 0, 0, 1, 0},
-        {0, 1, 0, 0, 0, 1},
-        {0, 1, 1, 0, 0, 1},
-        {0, 0, 0, 1, 1, 0},
-    };
+    int[][] adjMatrix = {{0, 1, 1, 0, 0, 0}, {1, 0, 0, 1, 1, 0}, {1, 0, 0, 0, 1, 0}, {0, 1, 0, 0, 0, 1},
+            {0, 1, 1, 0, 0, 1}, {0, 0, 0, 1, 1, 0},};
 
     void dfs(int start) {
         boolean[] visited = new boolean[adjMatrix.length];

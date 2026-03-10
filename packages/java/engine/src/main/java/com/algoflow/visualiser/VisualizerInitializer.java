@@ -7,31 +7,34 @@ import java.lang.reflect.Field;
 import java.util.*;
 
 public class VisualizerInitializer {
-    
+
     private static final Map<Object, Boolean> _scanned = new IdentityHashMap<>();
     private static final Set<Class<?>> _scannedClasses = new HashSet<>();
-    
+
     public static void autoScan(Object instance) {
-        if (instance == null || _scanned.containsKey(instance)) return;
+        if (instance == null || _scanned.containsKey(instance))
+            return;
         _scanned.put(instance, true);
-        
+
         scanFields(instance.getClass(), instance);
     }
-    
+
     public static void scanStatics(Class<?> clazz) {
-        if (!_scannedClasses.add(clazz)) return;
-        
+        if (!_scannedClasses.add(clazz))
+            return;
+
         scanFields(clazz, null);
     }
-    
+
     private static void scanFields(Class<?> clazz, Object instance) {
         boolean registered = false;
-        
+
         boolean scanStatic = (instance == null);
-        
+
         for (Field field : clazz.getDeclaredFields()) {
-            if (scanStatic != java.lang.reflect.Modifier.isStatic(field.getModifiers())) continue;
-            
+            if (scanStatic != java.lang.reflect.Modifier.isStatic(field.getModifiers()))
+                continue;
+
             field.setAccessible(true);
             try {
                 Object value = field.get(instance);
@@ -42,17 +45,18 @@ public class VisualizerInitializer {
                 // skip inaccessible fields
             }
         }
-        
-        if (registered) VisualizerRegistry.setLayout();
+
+        if (registered)
+            VisualizerRegistry.setLayout();
     }
-    
+
     private static boolean registerField(Field field, Object value, Object instance) {
         String name = field.getName();
-        
+
         // Check for @Graph annotation first
         if (field.isAnnotationPresent(Graph.class)) {
             Graph annotation = field.getAnnotation(Graph.class);
-            if (!isSupportedGraphType(field, value)) {
+            if (!isSupportedGraphType(value)) {
                 System.err.println("[AlgoFlow] @Graph on '" + name + "': unsupported type. Supported: int[][]");
                 return false;
             }
@@ -60,7 +64,7 @@ public class VisualizerInitializer {
             VisualizerRegistry.registerGraph(vis, value);
             return true;
         }
-        
+
         // Check for @Tree annotation
         if (field.isAnnotationPresent(Tree.class)) {
             TreeVisualizer vis = new TreeVisualizer(name, value, field.getType());
@@ -68,24 +72,25 @@ public class VisualizerInitializer {
             VisualizerRegistry.registerTree(vis);
             return true;
         }
-        
+
         return value != null && registerValue(name, value, is2DList(field));
     }
-    
+
     public static boolean registerLocalValue(String name, Object value) {
-        if (value == null) return false;
-        if (VisualizerRegistry.isRegistered(value)) return false;
+        if (value == null)
+            return false;
+        if (VisualizerRegistry.isRegistered(value))
+            return false;
         boolean is2D = (value instanceof List<?> list) && !list.isEmpty() && list.getFirst() instanceof List;
-        if (!registerValue(name, value, is2D)) return false;
+        if (!registerValue(name, value, is2D))
+            return false;
         VisualizerRegistry.setLayout();
         return true;
     }
-    
+
     private static boolean registerValue(String name, Object value, boolean is2DList) {
         if (value instanceof List<?> list) {
-            ListVisualizer vis = is2DList
-                    ? new Array2DVisualiser(list, name)
-                    : new Array1DVisualiser(list, name);
+            ListVisualizer vis = is2DList ? new Array2DVisualiser(list, name) : new Array1DVisualiser(list, name);
             VisualizerRegistry.register(vis, list);
             return true;
         } else if (value instanceof Collection<?> collection) {
@@ -101,7 +106,7 @@ public class VisualizerInitializer {
         }
         return false;
     }
-    
+
     private static boolean is2DList(Field field) {
         var genericType = field.getGenericType();
         if (genericType instanceof java.lang.reflect.ParameterizedType paramType) {
@@ -112,13 +117,13 @@ public class VisualizerInitializer {
         }
         return false;
     }
-    
+
     private static boolean is2DArray(Object value) {
         Class<?> clazz = value.getClass();
         return clazz.isArray() && clazz.getComponentType().isArray();
     }
-    
-    private static boolean isSupportedGraphType(Field field, Object value) {
+
+    private static boolean isSupportedGraphType(Object value) {
         return value instanceof int[][];
     }
 }

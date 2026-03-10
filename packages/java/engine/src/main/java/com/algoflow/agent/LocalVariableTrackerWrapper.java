@@ -3,9 +3,7 @@ package com.algoflow.agent;
 import net.bytebuddy.asm.AsmVisitorWrapper;
 import net.bytebuddy.description.field.FieldDescription;
 import net.bytebuddy.description.field.FieldList;
-import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.description.method.MethodList;
-import net.bytebuddy.description.method.ParameterDescription;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.implementation.Implementation;
 import net.bytebuddy.jar.asm.*;
@@ -26,14 +24,10 @@ public class LocalVariableTrackerWrapper implements AsmVisitorWrapper {
     }
 
     @Override
-    public ClassVisitor wrap(TypeDescription instrumentedType,
-                            ClassVisitor classVisitor,
-                            Implementation.Context implementationContext,
-                            TypePool typePool,
-                            FieldList<FieldDescription.InDefinedShape> fields,
-                            MethodList<?> methods,
-                            int writerFlags,
-                            int readerFlags) {
+    public ClassVisitor wrap(TypeDescription instrumentedType, ClassVisitor classVisitor,
+            Implementation.Context implementationContext, TypePool typePool,
+            FieldList<FieldDescription.InDefinedShape> fields, MethodList<?> methods, int writerFlags,
+            int readerFlags) {
         return new LocalVariableClassVisitor(classVisitor, instrumentedType);
     }
 
@@ -46,11 +40,12 @@ public class LocalVariableTrackerWrapper implements AsmVisitorWrapper {
         }
 
         @Override
-        public MethodVisitor visitMethod(int access, String name, String descriptor,
-                                         String signature, String[] exceptions) {
+        public MethodVisitor visitMethod(int access, String name, String descriptor, String signature,
+                String[] exceptions) {
             MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
-            if (name.equals("<init>") || name.equals("<clinit>")) return mv;
-            
+            if (name.equals("<init>") || name.equals("<clinit>"))
+                return mv;
+
             String methodKey = instrumentedType.getName() + "#" + name + descriptor;
             return new LocalVariableMethodVisitor(mv, methodKey);
         }
@@ -65,8 +60,8 @@ public class LocalVariableTrackerWrapper implements AsmVisitorWrapper {
         }
 
         @Override
-        public void visitLocalVariable(String name, String descriptor, String signature,
-                                       Label start, Label end, int index) {
+        public void visitLocalVariable(String name, String descriptor, String signature, Label start, Label end,
+                int index) {
             if (!name.equals("this")) {
                 com.algoflow.visualiser.LocalVariablesVisualizer.registerSlotName(methodKey, index, name);
             }
@@ -82,10 +77,9 @@ public class LocalVariableTrackerWrapper implements AsmVisitorWrapper {
         public void visitVarInsn(int opcode, int varIndex) {
             super.visitVarInsn(opcode, varIndex);
 
-            if (opcode == Opcodes.ISTORE || opcode == Opcodes.LSTORE ||
-                opcode == Opcodes.FSTORE || opcode == Opcodes.DSTORE ||
-                opcode == Opcodes.ASTORE) {
-                
+            if (opcode == Opcodes.ISTORE || opcode == Opcodes.LSTORE || opcode == Opcodes.FSTORE
+                    || opcode == Opcodes.DSTORE || opcode == Opcodes.ASTORE) {
+
                 injectTrackingCall(opcode, varIndex);
             }
         }
@@ -103,11 +97,8 @@ public class LocalVariableTrackerWrapper implements AsmVisitorWrapper {
             super.visitVarInsn(loadOpcode, varIndex);
             boxIfNeeded(storeOpcode);
 
-            super.visitMethodInsn(Opcodes.INVOKESTATIC,
-                "com/algoflow/visualiser/VisualizerRegistry",
-                "onLocalVariableUpdate",
-                "(Ljava/lang/String;ILjava/lang/Object;)V",
-                false);
+            super.visitMethodInsn(Opcodes.INVOKESTATIC, "com/algoflow/visualiser/VisualizerRegistry",
+                    "onLocalVariableUpdate", "(Ljava/lang/String;ILjava/lang/Object;)V", false);
         }
 
         private int getLoadOpcode(int storeOpcode) {
@@ -123,14 +114,15 @@ public class LocalVariableTrackerWrapper implements AsmVisitorWrapper {
 
         private void boxIfNeeded(int storeOpcode) {
             switch (storeOpcode) {
-                case Opcodes.ISTORE -> super.visitMethodInsn(Opcodes.INVOKESTATIC, 
-                    "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", false);
-                case Opcodes.LSTORE -> super.visitMethodInsn(Opcodes.INVOKESTATIC,
-                    "java/lang/Long", "valueOf", "(J)Ljava/lang/Long;", false);
-                case Opcodes.FSTORE -> super.visitMethodInsn(Opcodes.INVOKESTATIC,
-                    "java/lang/Float", "valueOf", "(F)Ljava/lang/Float;", false);
-                case Opcodes.DSTORE -> super.visitMethodInsn(Opcodes.INVOKESTATIC,
-                    "java/lang/Double", "valueOf", "(D)Ljava/lang/Double;", false);
+                case Opcodes.ISTORE -> super.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Integer", "valueOf",
+                        "(I)Ljava/lang/Integer;", false);
+                case Opcodes.LSTORE -> super.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Long", "valueOf",
+                        "(J)Ljava/lang/Long;", false);
+                case Opcodes.FSTORE -> super.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Float", "valueOf",
+                        "(F)Ljava/lang/Float;", false);
+                case Opcodes.DSTORE -> super.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Double", "valueOf",
+                        "(D)Ljava/lang/Double;", false);
+                default -> {}
             }
         }
     }

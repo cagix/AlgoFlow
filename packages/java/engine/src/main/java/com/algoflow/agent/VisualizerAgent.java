@@ -19,22 +19,22 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-
 import static net.bytebuddy.agent.builder.AgentBuilder.RedefinitionStrategy.RETRANSFORMATION;
 import static net.bytebuddy.matcher.ElementMatchers.*;
 
 public class VisualizerAgent {
 
-    public static void premain(String args, Instrumentation inst) throws IOException, NoSuchFieldException, IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException {
+    public static void premain(String args, Instrumentation inst) throws IOException, NoSuchFieldException,
+            IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException {
 
         System.out.println("[VisualizerAgent] Starting agent...");
         File temp = Files.createTempDirectory("temp").toFile();
 
         // 1. INJECT into Bootstrap
-        var result = ClassInjector.UsingInstrumentation.of(temp, ClassInjector.UsingInstrumentation.Target.BOOTSTRAP, inst)
-                .inject(Map.of(
-                        new TypeDescription.ForLoadedType(VisualizerBridge.class), ClassFileLocator.ForClassLoader.read(VisualizerBridge.class)
-                ));
+        var result = ClassInjector.UsingInstrumentation
+                .of(temp, ClassInjector.UsingInstrumentation.Target.BOOTSTRAP, inst)
+                .inject(Map.of(new TypeDescription.ForLoadedType(VisualizerBridge.class),
+                        ClassFileLocator.ForClassLoader.read(VisualizerBridge.class)));
 
         // We get the CLASS object that belongs to the Bootstrap loader
         Class<?> bootBridge = result.get(new TypeDescription.ForLoadedType(VisualizerBridge.class));
@@ -54,23 +54,23 @@ public class VisualizerAgent {
         Field setListener = bootBridge.getField("setListener");
         setListener.setAccessible(true);
         setListener.set(null, onSet);
-        
+
         Field addListener = bootBridge.getField("addListener");
         addListener.setAccessible(true);
         addListener.set(null, onAdd);
-        
+
         Field clearListener = bootBridge.getField("clearListener");
         clearListener.setAccessible(true);
         clearListener.set(null, onClear);
-        
+
         Field printlnListener = bootBridge.getField("printlnListener");
         printlnListener.setAccessible(true);
         printlnListener.set(null, onPrintln);
-        
+
         Field printListenerField = bootBridge.getField("printListener");
         printListenerField.setAccessible(true);
         printListenerField.set(null, onPrint);
-        
+
         Field removeListener = bootBridge.getField("removeListener");
         removeListener.setAccessible(true);
         removeListener.set(null, onRemove);
@@ -86,39 +86,27 @@ public class VisualizerAgent {
         iteratorCreatedListenerField.setAccessible(true);
         iteratorCreatedListenerField.set(null, onIteratorCreated);
 
-        new AgentBuilder.Default()
-                .disableClassFormatChanges()
-                .with(RETRANSFORMATION)
+        new AgentBuilder.Default().disableClassFormatChanges().with(RETRANSFORMATION)
                 // Make sure we see helpful logs
                 .with(AgentBuilder.RedefinitionStrategy.Listener.StreamWriting.toSystemError())
                 .with(AgentBuilder.Listener.StreamWriting.toSystemError().withTransformationsOnly())
                 .with(AgentBuilder.InstallationListener.StreamWriting.toSystemError())
                 // Ignore Byte Buddy and JDK classes we are not interested in
-                .ignore(
-                        nameStartsWith("net.bytebuddy.")
-                                .or(nameStartsWith("jdk.internal.reflect."))
-                                .or(nameStartsWith("java.lang.invoke."))
-                                .or(nameStartsWith("com.sun.proxy."))
-                )
-                .with(AgentBuilder.InitializationStrategy.NoOp.INSTANCE)
-                .type(nameStartsWith("com.algoflow.runner"))
+                .ignore(nameStartsWith("net.bytebuddy.").or(nameStartsWith("jdk.internal.reflect."))
+                        .or(nameStartsWith("java.lang.invoke.")).or(nameStartsWith("com.sun.proxy.")))
+                .with(AgentBuilder.InitializationStrategy.NoOp.INSTANCE).type(nameStartsWith("com.algoflow.runner"))
                 .transform((builder, type, classLoader, module, protectionDomain) -> {
                     System.out.println("[VisualizerAgent] Transforming: " + type.getName());
-                    return builder
-                            .visit(Advice.to(ConstructorInterceptor.class)
-                                    .on(isConstructor()))
-                            .visit(Advice.to(StaticInitInterceptor.class)
-                                    .on(isTypeInitializer()))
+                    return builder.visit(Advice.to(ConstructorInterceptor.class).on(isConstructor()))
+                            .visit(Advice.to(StaticInitInterceptor.class).on(isTypeInitializer()))
                             .visit(Advice.to(RecursionInterceptor.EnterInterceptor.class)
                                     .on(not(isConstructor().or(isTypeInitializer()))))
                             .visit(Advice.to(RecursionInterceptor.ExitInterceptor.class)
                                     .on(not(isConstructor().or(isTypeInitializer()))))
-                            .visit(new LocalVariableTrackerWrapper())
-                            .visit(new FieldAccessWrapper())
+                            .visit(new LocalVariableTrackerWrapper()).visit(new FieldAccessWrapper())
                             .visit(new ArrayAccessWrapper());
                 })
-                .type(ElementMatchers.is(java.util.ArrayList.class)
-                        .or(ElementMatchers.is(LinkedList.class))
+                .type(ElementMatchers.is(java.util.ArrayList.class).or(ElementMatchers.is(LinkedList.class))
                         .or(ElementMatchers.is(java.util.Stack.class)))
                 .transform((builder, type, classLoader, module, protectionDomain) -> {
                     System.out.println("[VisualizerAgent] Transforming: " + type.getName());
@@ -145,8 +133,7 @@ public class VisualizerAgent {
                                     .on(named("poll").or(named("pop")).or(named("remove"))))
                             .visit(Advice.to(CollectionInterceptor.ClearInterceptor.class)
                                     .on(named("clear").and(takesArguments(0))));
-                })
-                .type(ElementMatchers.is(java.io.PrintStream.class))
+                }).type(ElementMatchers.is(java.io.PrintStream.class))
                 .transform((builder, type, classLoader, module, protectionDomain) -> {
                     System.out.println("[VisualizerAgent] Transforming PrintStream");
                     return builder
@@ -154,27 +141,21 @@ public class VisualizerAgent {
                                     .on(named("writeln").and(takesArguments(String.class))))
                             .visit(Advice.to(PrintStreamInterceptor.PrintInterceptor.class)
                                     .on(named("write").and(takesArguments(String.class))));
-                })
-                .type(ElementMatchers.isSubTypeOf(java.util.Iterator.class)
-                        .and(nameStartsWith("java.util.")))
+                }).type(ElementMatchers.isSubTypeOf(java.util.Iterator.class).and(nameStartsWith("java.util.")))
                 .transform((builder, type, classLoader, module, protectionDomain) -> {
                     System.out.println("[VisualizerAgent] Transforming Iterator: " + type.getName());
-                    return builder
-                            .visit(Advice.to(IteratorInterceptor.NextInterceptor.class)
-                                    .on(named("next").and(takesArguments(0))));
+                    return builder.visit(Advice.to(IteratorInterceptor.NextInterceptor.class)
+                            .on(named("next").and(takesArguments(0))));
                 })
-                .type(ElementMatchers.is(java.util.ArrayList.class)
-                        .or(ElementMatchers.is(LinkedList.class))
+                .type(ElementMatchers.is(java.util.ArrayList.class).or(ElementMatchers.is(LinkedList.class))
                         .or(ElementMatchers.is(java.util.Stack.class))
                         .or(ElementMatchers.is(java.util.ArrayDeque.class))
                         .or(ElementMatchers.is(java.util.PriorityQueue.class)))
                 .transform((builder, type, classLoader, module, protectionDomain) -> {
                     System.out.println("[VisualizerAgent] Transforming iterator() on: " + type.getName());
-                    return builder
-                            .visit(Advice.to(IteratorInterceptor.CreatedInterceptor.class)
-                                    .on(named("iterator").and(takesArguments(0))));
-                })
-                .installOn(inst);
+                    return builder.visit(Advice.to(IteratorInterceptor.CreatedInterceptor.class)
+                            .on(named("iterator").and(takesArguments(0))));
+                }).installOn(inst);
 
         System.out.println("[VisualizerAgent] Agent installed");
     }

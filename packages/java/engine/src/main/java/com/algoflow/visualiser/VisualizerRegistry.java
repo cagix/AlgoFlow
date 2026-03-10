@@ -50,7 +50,7 @@ public class VisualizerRegistry {
             }
         }
     }
-    
+
     public static void registerTree(TreeVisualizer visualizer) {
         _visualizers.add(visualizer.getCommander());
         _treeVisualizers.add(visualizer);
@@ -60,7 +60,7 @@ public class VisualizerRegistry {
         _visualizers.add(visualizer.getCommander());
         _graphToVisualizer.put(graphObj, visualizer);
     }
-    
+
     public static void autoRegisterCodeVisualizer() {
         if (_codeVisualizer == null) {
             _codeVisualizer = new CodeVisualizer("Line Tracker");
@@ -68,35 +68,32 @@ public class VisualizerRegistry {
             setLayout();
         }
     }
-    
+
     private static void highlightLine(int lineNumber) {
-        if (lineNumber <= 0) return;
-        if (_codeVisualizer == null) autoRegisterCodeVisualizer();
+        if (lineNumber <= 0)
+            return;
+        if (_codeVisualizer == null)
+            autoRegisterCodeVisualizer();
         _codeVisualizer.highlightLine(lineNumber);
     }
-    
 
-    
     private static int getCallerLineNumber() {
         return getRunnerLineNumber(0);
     }
-    
+
     private static int getCallerCallerLineNumber() {
         return getRunnerLineNumber(1);
     }
-    
+
     private static int getRunnerLineNumber(int skip) {
-        return StackWalker.getInstance().walk(frames -> 
-            frames.filter(f -> f.getClassName().startsWith("com.algoflow.runner"))
-                  .skip(skip)
-                  .findFirst()
-                  .map(StackWalker.StackFrame::getLineNumber)
-                  .orElse(-1)
-        );
+        return StackWalker.getInstance()
+                .walk(frames -> frames.filter(f -> f.getClassName().startsWith("com.algoflow.runner")).skip(skip)
+                        .findFirst().map(StackWalker.StackFrame::getLineNumber).orElse(-1));
     }
-    
+
     public static void onMethodEnter(String methodName, Object[] args) {
-        if (_processing) return;
+        if (_processing)
+            return;
         _processing = true;
         try {
             highlightLine(getCallerCallerLineNumber());
@@ -111,9 +108,10 @@ public class VisualizerRegistry {
             _processing = false;
         }
     }
-    
+
     public static void onMethodExit(String methodName, Object result) {
-        if (_processing) return;
+        if (_processing)
+            return;
         _processing = true;
         try {
             if (_callStackVisualizer != null) {
@@ -125,16 +123,17 @@ public class VisualizerRegistry {
             _processing = false;
         }
     }
-    
+
     public static void registerLocalVariables(String methodKey, LocalVariablesVisualizer visualizer) {
         _localVariablesVisualizers.put(methodKey, visualizer);
         _visualizers.add(visualizer.getCommander());
     }
-    
+
     private static volatile boolean _processing = false;
-    
+
     public static void onArrayGet(Object array, Object[] args) {
-        if (_processing) return;
+        if (_processing)
+            return;
         _processing = true;
         try {
             doArrayGet(array, args);
@@ -142,19 +141,19 @@ public class VisualizerRegistry {
             _processing = false;
         }
     }
-    
+
     private static void doArrayGet(Object array, Object[] args) {
         if (args.length > 1 && args[1] instanceof Integer lineNumber) {
             highlightLine(lineNumber);
         }
-        
+
         // Check if this array is a graph (int[][] adjacency matrix)
         GraphVisualizer graphVis = _graphToVisualizer.get(array);
         if (graphVis != null) {
             // Top-level access: adjMatrix[row] — no-op, wait for subarray access
             return;
         }
-        
+
         // Check if this is a subarray (row) of a graph
         GraphVisualizer parentGraph = findParentGraph(array);
         if (parentGraph != null) {
@@ -167,7 +166,7 @@ public class VisualizerRegistry {
                 return;
             }
         }
-        
+
         // Check for row visualizer (2D array access)
         for (PrimitiveArray2DVisualizer vis2D : _array2DToVisualizer.values()) {
             PrimitiveArray2DVisualizer.RowVisualizer rowVis = vis2D.getRowVisualizer(array);
@@ -176,21 +175,22 @@ public class VisualizerRegistry {
                 return;
             }
         }
-        
+
         PrimitiveArray2DVisualizer array2DVis = _array2DToVisualizer.get(array);
         if (array2DVis != null) {
             array2DVis.onGet(args);
             return;
         }
-        
+
         PrimitiveArray1DVisualizer arrayVis = _arrayToVisualizer.get(array);
         if (arrayVis != null) {
             arrayVis.onGet(args);
         }
     }
-    
+
     public static void onArraySet(Object array, Object[] args) {
-        if (_processing) return;
+        if (_processing)
+            return;
         _processing = true;
         try {
             doArraySet(array, args);
@@ -198,19 +198,19 @@ public class VisualizerRegistry {
             _processing = false;
         }
     }
-    
+
     private static void doArraySet(Object array, Object[] args) {
         if (args.length > 2 && args[2] instanceof Integer lineNumber) {
             highlightLine(lineNumber);
         }
-        
+
         // Check if this array is a graph (int[][] adjacency matrix)
         GraphVisualizer graphVis = _graphToVisualizer.get(array);
         if (graphVis != null) {
             // Top-level set on adjacency matrix — no-op
             return;
         }
-        
+
         // Check if this is a subarray (row) of a graph
         GraphVisualizer parentGraph = findParentGraph(array);
         if (parentGraph != null) {
@@ -226,7 +226,7 @@ public class VisualizerRegistry {
                 return;
             }
         }
-        
+
         // Check for row visualizer (2D array access)
         for (PrimitiveArray2DVisualizer vis2D : _array2DToVisualizer.values()) {
             PrimitiveArray2DVisualizer.RowVisualizer rowVis = vis2D.getRowVisualizer(array);
@@ -235,25 +235,26 @@ public class VisualizerRegistry {
                 return;
             }
         }
-        
+
         PrimitiveArray2DVisualizer array2DVis = _array2DToVisualizer.get(array);
         if (array2DVis != null) {
             array2DVis.onSet(args);
             return;
         }
-        
+
         PrimitiveArray1DVisualizer arrayVis = _arrayToVisualizer.get(array);
         if (arrayVis != null) {
             arrayVis.onSet(args);
         }
     }
-    
+
     public static void onGet(Object object, Object[] args) {
-        if (_processing) return;
+        if (_processing)
+            return;
         _processing = true;
         try {
             highlightLine(getCallerLineNumber());
-            
+
             ListVisualizer visualizer = _objectToVisualizer.computeIfAbsent(object, VisualizerRegistry::findVisualizer);
             if (visualizer != null) {
                 visualizer.onGet(args);
@@ -262,13 +263,14 @@ public class VisualizerRegistry {
             _processing = false;
         }
     }
-    
+
     public static void onSet(Object object, Object[] args) {
-        if (_processing) return;
+        if (_processing)
+            return;
         _processing = true;
         try {
             highlightLine(getCallerLineNumber());
-            
+
             ListVisualizer visualizer = _objectToVisualizer.computeIfAbsent(object, VisualizerRegistry::findVisualizer);
             if (visualizer != null) {
                 visualizer.onSet(args);
@@ -279,11 +281,12 @@ public class VisualizerRegistry {
     }
 
     public static void onAdd(Object object, Object[] args) {
-        if (_processing) return;
+        if (_processing)
+            return;
         _processing = true;
         try {
             highlightLine(getCallerLineNumber());
-            
+
             ListVisualizer visualizer = _objectToVisualizer.get(object);
             if (visualizer != null) {
                 visualizer.onAdd(args);
@@ -294,11 +297,12 @@ public class VisualizerRegistry {
     }
 
     public static void onRemove(Object object, Object[] args) {
-        if (_processing) return;
+        if (_processing)
+            return;
         _processing = true;
         try {
             highlightLine(getCallerLineNumber());
-            
+
             ListVisualizer visualizer = _objectToVisualizer.get(object);
             if (visualizer != null) {
                 visualizer.onRemove(args);
@@ -309,11 +313,12 @@ public class VisualizerRegistry {
     }
 
     public static void onClear(Object object) {
-        if (_processing) return;
+        if (_processing)
+            return;
         _processing = true;
         try {
             highlightLine(getCallerLineNumber());
-            
+
             ListVisualizer visualizer = _objectToVisualizer.get(object);
             if (visualizer != null) {
                 visualizer.onClear();
@@ -327,7 +332,8 @@ public class VisualizerRegistry {
     private static final IdentityHashMap<Object, int[]> _iteratorIndex = new IdentityHashMap<>();
 
     public static void onIteratorCreated(Object collection, Object iterator) {
-        if (_processing) return;
+        if (_processing)
+            return;
         _processing = true;
         try {
             ListVisualizer vis = _objectToVisualizer.get(collection);
@@ -341,7 +347,8 @@ public class VisualizerRegistry {
     }
 
     public static void onIteratorNext(Object iterator) {
-        if (_processing) return;
+        if (_processing)
+            return;
         _processing = true;
         try {
             highlightLine(getCallerLineNumber());
@@ -357,21 +364,26 @@ public class VisualizerRegistry {
     }
 
     public static void onPrintln(String message) {
-        if (_processing) return;
+        if (_processing)
+            return;
         _processing = true;
         try {
-            if (!isCalledFromRunner("println")) return;
-            if (_logVisualizer != null) _logVisualizer.println(message);
+            if (!isCalledFromRunner("println"))
+                return;
+            if (_logVisualizer != null)
+                _logVisualizer.println(message);
         } finally {
             _processing = false;
         }
     }
 
     public static void onFieldSet(Object owner, String fieldName, int lineNumber) {
-        if (_processing) return;
+        if (_processing)
+            return;
         _processing = true;
         try {
-            if (lineNumber > 0) highlightLine(lineNumber);
+            if (lineNumber > 0)
+                highlightLine(lineNumber);
             for (TreeVisualizer tv : _treeVisualizers) {
                 if (tv.isTrackedNode(owner)) {
                     tv.onFieldSet(owner, fieldName);
@@ -384,28 +396,30 @@ public class VisualizerRegistry {
     }
 
     public static void onPrint(String message) {
-        if (_processing) return;
+        if (_processing)
+            return;
         _processing = true;
         try {
-            if (!isCalledFromRunner("print")) return;
-            if (_logVisualizer != null) _logVisualizer.print(message);
+            if (!isCalledFromRunner("print"))
+                return;
+            if (_logVisualizer != null)
+                _logVisualizer.print(message);
         } finally {
             _processing = false;
         }
     }
-    
-
 
     public static void onLocalVariableUpdate(String methodKey, int slotIndex, Object value) {
         String variableName = LocalVariablesVisualizer.getSlotName(methodKey, slotIndex);
-        if (variableName == null) return;
-        
-        if (value != null && VisualizerInitializer.registerLocalValue(variableName, value)) {
+        if (variableName == null)
+            return;
+
+        if (VisualizerInitializer.registerLocalValue(variableName, value)) {
             return;
         }
-        
+
         highlightLine(getCallerLineNumber());
-        
+
         LocalVariablesVisualizer visualizer = _localVariablesVisualizers.get(methodKey);
         if (visualizer == null) {
             String methodName = methodKey.substring(methodKey.lastIndexOf('#') + 1, methodKey.lastIndexOf('('));
@@ -415,15 +429,14 @@ public class VisualizerRegistry {
         }
         visualizer.onVariableUpdate(variableName, value);
     }
-    
+
     private static GraphVisualizer findParentGraph(Object subarray) {
         for (GraphVisualizer graphVis : _graphToVisualizer.values()) {
-            if (graphVis.findRowIndex(subarray) >= 0) return graphVis;
+            if (graphVis.findRowIndex(subarray) >= 0)
+                return graphVis;
         }
         return null;
     }
-
-
 
     private static boolean isCalledFromRunner(String callerMethod) {
         return StackWalker.getInstance().walk(frames -> {
@@ -441,17 +454,13 @@ public class VisualizerRegistry {
         if (_logVisualizer == null) {
             _logVisualizer = new LogVisualizer();
         }
-        
+
         List<Commander> allCommanders = new ArrayList<>(_visualizers);
         allCommanders.add(_logVisualizer.getCommander());
-        
-        System.out.println("Setting layout with " + allCommanders.size() + " visualizers:");
-        for (int i = 0; i < allCommanders.size(); i++) {
-            System.out.println("  [" + i + "] " + allCommanders.get(i).getClass().getSimpleName());
-        }
+
         Layout.setRoot(new VerticalLayout(allCommanders.toArray(Commander[]::new)));
     }
-    
+
     private static ListVisualizer findVisualizer(Object object) {
         for (ListVisualizer visualizer : _objectToVisualizer.values()) {
             if (visualizer instanceof Array2DVisualiser array2D) {

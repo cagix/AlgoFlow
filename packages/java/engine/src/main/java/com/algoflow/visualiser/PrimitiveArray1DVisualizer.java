@@ -56,23 +56,28 @@ public class PrimitiveArray1DVisualizer implements Visualizer {
             return java.util.Arrays.stream(arr).boxed().toArray();
         } else if (array instanceof float[] arr) {
             Float[] result = new Float[arr.length];
-            for (int i = 0; i < arr.length; i++) result[i] = arr[i];
+            for (int i = 0; i < arr.length; i++)
+                result[i] = arr[i];
             return result;
         } else if (array instanceof byte[] arr) {
             Byte[] result = new Byte[arr.length];
-            for (int i = 0; i < arr.length; i++) result[i] = arr[i];
+            for (int i = 0; i < arr.length; i++)
+                result[i] = arr[i];
             return result;
         } else if (array instanceof short[] arr) {
             Short[] result = new Short[arr.length];
-            for (int i = 0; i < arr.length; i++) result[i] = arr[i];
+            for (int i = 0; i < arr.length; i++)
+                result[i] = arr[i];
             return result;
         } else if (array instanceof char[] arr) {
             Character[] result = new Character[arr.length];
-            for (int i = 0; i < arr.length; i++) result[i] = arr[i];
+            for (int i = 0; i < arr.length; i++)
+                result[i] = arr[i];
             return result;
         } else if (array instanceof boolean[] arr) {
             Boolean[] result = new Boolean[arr.length];
-            for (int i = 0; i < arr.length; i++) result[i] = arr[i];
+            for (int i = 0; i < arr.length; i++)
+                result[i] = arr[i];
             return result;
         }
         return new Object[0];

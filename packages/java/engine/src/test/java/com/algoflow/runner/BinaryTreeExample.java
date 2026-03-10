@@ -8,7 +8,9 @@ public class BinaryTreeExample {
         int val;
         TreeNode left;
         TreeNode right;
-        TreeNode(int val) { this.val = val; }
+        TreeNode(int val) {
+            this.val = val;
+        }
     }
 
     @Tree
@@ -19,7 +21,8 @@ public class BinaryTreeExample {
     }
 
     TreeNode insertRec(TreeNode node, int val) {
-        if (node == null) return new TreeNode(val);
+        if (node == null)
+            return new TreeNode(val);
         if (val < node.val) {
             node.left = insertRec(node.left, val);
         } else {
@@ -29,7 +32,8 @@ public class BinaryTreeExample {
     }
 
     void inorder(TreeNode node) {
-        if (node == null) return;
+        if (node == null)
+            return;
         inorder(node.left);
         System.out.println(node.val);
         inorder(node.right);

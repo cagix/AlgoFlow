@@ -13,7 +13,7 @@ public class Array1DVisualiser implements ListVisualizer {
         this._list = list;
         this._tracer = new Array1DTracer(name);
         _tracer.set(((Collection<?>) list).toArray());
-        
+
         Tracer.delay();
     }
 

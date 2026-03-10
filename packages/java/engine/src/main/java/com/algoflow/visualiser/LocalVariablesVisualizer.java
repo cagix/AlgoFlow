@@ -5,35 +5,28 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class LocalVariablesVisualizer implements Visualizer {
-    
+
     private final Array2DTracer _tracer;
     private final Map<String, Object> _variableValues = new LinkedHashMap<>();
     private static final Map<String, Map<Integer, String>> slotNameRegistry = new ConcurrentHashMap<>();
-    
+
     public LocalVariablesVisualizer(String name) {
         this._tracer = new Array2DTracer(name);
     }
-    
-    public LocalVariablesVisualizer(String name, String[] variableNames) {
-        this(name);
-        for (String varName : variableNames) {
-            _variableValues.put(varName, null);
-        }
-    }
-    
+
     public static void registerSlotName(String methodKey, int slot, String name) {
         slotNameRegistry.computeIfAbsent(methodKey, k -> new ConcurrentHashMap<>()).put(slot, name);
     }
-    
+
     public static String getSlotName(String methodKey, int slot) {
         return slotNameRegistry.getOrDefault(methodKey, Map.of()).get(slot);
     }
-    
+
     public void onVariableUpdate(String variableName, Object value) {
         _variableValues.put(variableName, value);
         updateDisplay(variableName);
     }
-    
+
     private void updateDisplay(String variableName) {
         String[] names = _variableValues.keySet().toArray(String[]::new);
         Object[][] grid = new Object[names.length][2];
@@ -46,13 +39,13 @@ public class LocalVariablesVisualizer implements Visualizer {
                 patchedRow = i;
             }
         }
-        
+
         _tracer.set(grid);
         _tracer.patch(patchedRow, 1);
         Tracer.delay();
         _tracer.depatch(patchedRow, 1);
     }
-    
+
     @Override
     public Commander getCommander() {
         return _tracer;

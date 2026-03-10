@@ -25,14 +25,10 @@ public class ArrayAccessWrapper implements AsmVisitorWrapper {
     }
 
     @Override
-    public ClassVisitor wrap(TypeDescription instrumentedType,
-                            ClassVisitor classVisitor,
-                            Implementation.Context implementationContext,
-                            TypePool typePool,
-                            FieldList<FieldDescription.InDefinedShape> fields,
-                            MethodList<?> methods,
-                            int writerFlags,
-                            int readerFlags) {
+    public ClassVisitor wrap(TypeDescription instrumentedType, ClassVisitor classVisitor,
+            Implementation.Context implementationContext, TypePool typePool,
+            FieldList<FieldDescription.InDefinedShape> fields, MethodList<?> methods, int writerFlags,
+            int readerFlags) {
         return new ArrayAccessClassVisitor(classVisitor);
     }
 
@@ -42,8 +38,8 @@ public class ArrayAccessWrapper implements AsmVisitorWrapper {
         }
 
         @Override
-        public MethodVisitor visitMethod(int access, String name, String descriptor,
-                                         String signature, String[] exceptions) {
+        public MethodVisitor visitMethod(int access, String name, String descriptor, String signature,
+                String[] exceptions) {
             MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
             return new ArrayAccessMethodVisitor(mv);
         }
@@ -56,7 +52,7 @@ public class ArrayAccessWrapper implements AsmVisitorWrapper {
         public ArrayAccessMethodVisitor(MethodVisitor mv) {
             super(Opcodes.ASM9, mv);
         }
-        
+
         @Override
         public void visitLineNumber(int line, net.bytebuddy.jar.asm.Label start) {
             mv.visitLineNumber(line, start);
@@ -72,11 +68,9 @@ public class ArrayAccessWrapper implements AsmVisitorWrapper {
 
             if (opcode >= Opcodes.IALOAD && opcode <= Opcodes.SALOAD) {
                 injectArrayRead(opcode);
-            }
-            else if (opcode >= Opcodes.IASTORE && opcode <= Opcodes.SASTORE) {
+            } else if (opcode >= Opcodes.IASTORE && opcode <= Opcodes.SASTORE) {
                 injectArrayWrite(opcode);
-            }
-            else {
+            } else {
                 super.visitInsn(opcode);
             }
         }
@@ -97,21 +91,20 @@ public class ArrayAccessWrapper implements AsmVisitorWrapper {
             super.visitInsn(Opcodes.DUP);
             super.visitInsn(Opcodes.ICONST_0);
             super.visitVarInsn(Opcodes.ILOAD, indexSlot);
-            super.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", false);
+            super.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;",
+                    false);
             super.visitInsn(Opcodes.AASTORE);
             super.visitInsn(Opcodes.DUP);
             super.visitInsn(Opcodes.ICONST_1);
             super.visitLdcInsn(currentLine);
-            super.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", false);
+            super.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;",
+                    false);
             super.visitInsn(Opcodes.AASTORE);
 
             super.visitVarInsn(Opcodes.ALOAD, arraySlot);
             super.visitInsn(Opcodes.SWAP);
-            super.visitMethodInsn(Opcodes.INVOKESTATIC,
-                    "com/algoflow/visualiser/VisualizerRegistry",
-                    "onArrayGet",
-                    "(Ljava/lang/Object;[Ljava/lang/Object;)V",
-                    false);
+            super.visitMethodInsn(Opcodes.INVOKESTATIC, "com/algoflow/visualiser/VisualizerRegistry", "onArrayGet",
+                    "(Ljava/lang/Object;[Ljava/lang/Object;)V", false);
 
             super.visitVarInsn(Opcodes.ALOAD, arraySlot);
             super.visitVarInsn(Opcodes.ILOAD, indexSlot);
@@ -121,22 +114,23 @@ public class ArrayAccessWrapper implements AsmVisitorWrapper {
 
         private void injectArrayWrite(int opcode) {
             injectingCode = true;
-            
+
             int valueSlot = 100;
             int indexSlot = 101;
             int arraySlot = 102;
-            
+
             storeValue(opcode, valueSlot);
             super.visitVarInsn(Opcodes.ISTORE, indexSlot);
             super.visitVarInsn(Opcodes.ASTORE, arraySlot);
-            
+
             // Create Object[3] with index, value, and line number
             super.visitInsn(Opcodes.ICONST_3);
             super.visitTypeInsn(Opcodes.ANEWARRAY, "java/lang/Object");
             super.visitInsn(Opcodes.DUP);
             super.visitInsn(Opcodes.ICONST_0);
             super.visitVarInsn(Opcodes.ILOAD, indexSlot);
-            super.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", false);
+            super.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;",
+                    false);
             super.visitInsn(Opcodes.AASTORE);
             super.visitInsn(Opcodes.DUP);
             super.visitInsn(Opcodes.ICONST_1);
@@ -146,58 +140,60 @@ public class ArrayAccessWrapper implements AsmVisitorWrapper {
             super.visitInsn(Opcodes.DUP);
             super.visitInsn(Opcodes.ICONST_2);
             super.visitLdcInsn(currentLine);
-            super.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", false);
+            super.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;",
+                    false);
             super.visitInsn(Opcodes.AASTORE);
-            
+
             super.visitVarInsn(Opcodes.ALOAD, arraySlot);
             super.visitInsn(Opcodes.SWAP);
-            super.visitMethodInsn(Opcodes.INVOKESTATIC,
-                "com/algoflow/visualiser/VisualizerRegistry",
-                "onArraySet",
-                "(Ljava/lang/Object;[Ljava/lang/Object;)V",
-                false);
-            
+            super.visitMethodInsn(Opcodes.INVOKESTATIC, "com/algoflow/visualiser/VisualizerRegistry", "onArraySet",
+                    "(Ljava/lang/Object;[Ljava/lang/Object;)V", false);
+
             super.visitVarInsn(Opcodes.ALOAD, arraySlot);
             super.visitVarInsn(Opcodes.ILOAD, indexSlot);
             loadValue(opcode, valueSlot);
             super.visitInsn(opcode);
-            
+
             injectingCode = false;
         }
-        
+
         private void storeValue(int opcode, int slot) {
             switch (opcode) {
-                case Opcodes.IASTORE, Opcodes.BASTORE, Opcodes.CASTORE, Opcodes.SASTORE -> 
+                case Opcodes.IASTORE, Opcodes.BASTORE, Opcodes.CASTORE, Opcodes.SASTORE ->
                     super.visitVarInsn(Opcodes.ISTORE, slot);
                 case Opcodes.LASTORE -> super.visitVarInsn(Opcodes.LSTORE, slot);
                 case Opcodes.FASTORE -> super.visitVarInsn(Opcodes.FSTORE, slot);
                 case Opcodes.DASTORE -> super.visitVarInsn(Opcodes.DSTORE, slot);
                 case Opcodes.AASTORE -> super.visitVarInsn(Opcodes.ASTORE, slot);
+                default -> {}
             }
         }
-        
+
         private void loadValue(int opcode, int slot) {
             switch (opcode) {
-                case Opcodes.IASTORE, Opcodes.BASTORE, Opcodes.CASTORE, Opcodes.SASTORE -> 
+                case Opcodes.IASTORE, Opcodes.BASTORE, Opcodes.CASTORE, Opcodes.SASTORE ->
                     super.visitVarInsn(Opcodes.ILOAD, slot);
                 case Opcodes.LASTORE -> super.visitVarInsn(Opcodes.LLOAD, slot);
                 case Opcodes.FASTORE -> super.visitVarInsn(Opcodes.FLOAD, slot);
                 case Opcodes.DASTORE -> super.visitVarInsn(Opcodes.DLOAD, slot);
                 case Opcodes.AASTORE -> super.visitVarInsn(Opcodes.ALOAD, slot);
+                default -> {}
             }
         }
 
         private void boxIfNeeded(int opcode) {
             switch (opcode) {
-                case Opcodes.IALOAD, Opcodes.IASTORE, Opcodes.BALOAD, Opcodes.BASTORE, 
-                     Opcodes.CALOAD, Opcodes.CASTORE, Opcodes.SALOAD, Opcodes.SASTORE -> 
-                    super.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", false);
-                case Opcodes.LALOAD, Opcodes.LASTORE -> 
-                    super.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Long", "valueOf", "(J)Ljava/lang/Long;", false);
-                case Opcodes.FALOAD, Opcodes.FASTORE -> 
-                    super.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Float", "valueOf", "(F)Ljava/lang/Float;", false);
-                case Opcodes.DALOAD, Opcodes.DASTORE -> 
-                    super.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Double", "valueOf", "(D)Ljava/lang/Double;", false);
+                case Opcodes.IALOAD, Opcodes.IASTORE, Opcodes.BALOAD, Opcodes.BASTORE, Opcodes.CALOAD, Opcodes.CASTORE,
+                        Opcodes.SALOAD, Opcodes.SASTORE ->
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Integer", "valueOf",
+                            "(I)Ljava/lang/Integer;", false);
+                case Opcodes.LALOAD, Opcodes.LASTORE -> super.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Long",
+                        "valueOf", "(J)Ljava/lang/Long;", false);
+                case Opcodes.FALOAD, Opcodes.FASTORE -> super.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Float",
+                        "valueOf", "(F)Ljava/lang/Float;", false);
+                case Opcodes.DALOAD, Opcodes.DASTORE -> super.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Double",
+                        "valueOf", "(D)Ljava/lang/Double;", false);
+                default -> {}
             }
         }
     }

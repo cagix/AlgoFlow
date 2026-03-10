@@ -6,20 +6,14 @@ public class CollectionInterceptor {
 
     static class AddInterceptor {
         @Advice.OnMethodExit
-        static void onAdd(
-                @Advice.This Object instance,
-                @Advice.AllArguments Object[] args
-        ) {
+        static void onAdd(@Advice.This Object instance, @Advice.AllArguments Object[] args) {
             VisualizerBridge.addListener.accept(instance, args);
         }
     }
 
     static class RemoveInterceptor {
         @Advice.OnMethodExit
-        static void onRemove(
-                @Advice.This Object instance,
-                @Advice.AllArguments Object[] args
-        ) {
+        static void onRemove(@Advice.This Object instance, @Advice.AllArguments Object[] args) {
             VisualizerBridge.removeListener.accept(instance, args);
         }
     }

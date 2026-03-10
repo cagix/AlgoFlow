@@ -1,7 +1,5 @@
 package com.algoflow.runner;
 
-import com.algoflow.annotation.Visualize;
-
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
@@ -14,18 +12,22 @@ public class FieldAnnotationExample {
     static {
         try {
             TrustManager[] trustAll = new TrustManager[]{new X509TrustManager() {
-                public X509Certificate[] getAcceptedIssuers() { return null; }
-                public void checkClientTrusted(X509Certificate[] certs, String authType) {}
-                public void checkServerTrusted(X509Certificate[] certs, String authType) {}
+                public X509Certificate[] getAcceptedIssuers() {
+                    return null;
+                }
+                public void checkClientTrusted(X509Certificate[] certs, String authType) {
+                }
+                public void checkServerTrusted(X509Certificate[] certs, String authType) {
+                }
             }};
             SSLContext sc = SSLContext.getInstance("TLS");
             sc.init(null, trustAll, new java.security.SecureRandom());
             HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
             HttpsURLConnection.setDefaultHostnameVerifier((h, s) -> true);
-        } catch (Exception e) {}
+        } catch (Exception e) {
+        }
     }
 
-    @Visualize
     private List<Integer> numbers = new ArrayList<>(Arrays.asList(5, 2, 8, 1, 9));
 
     public void sort() {

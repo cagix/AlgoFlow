@@ -92,7 +92,8 @@ public class TreeVisualizer implements Visualizer {
             return;
         }
 
-        if (!_knownNodes.contains(owner)) return;
+        if (!_knownNodes.contains(owner))
+            return;
 
         if (fieldName.equals(_valField)) {
             _tracer.updateNode(id(owner), getNodeValue(owner));
@@ -106,7 +107,8 @@ public class TreeVisualizer implements Visualizer {
     }
 
     public void visit(Object node) {
-        if (node == null || !_knownNodes.contains(node)) return;
+        if (node == null || !_knownNodes.contains(node))
+            return;
         leaveLastVisited(node);
         _lastVisited = node;
         _tracer.visit(id(node));
@@ -114,7 +116,8 @@ public class TreeVisualizer implements Visualizer {
     }
 
     public void visit(Object node, Object parent) {
-        if (node == null || !_knownNodes.contains(node)) return;
+        if (node == null || !_knownNodes.contains(node))
+            return;
         leaveLastVisited(node);
         _lastVisited = node;
         _tracer.visit(id(node), id(parent));
@@ -122,26 +125,26 @@ public class TreeVisualizer implements Visualizer {
     }
 
     public void leave(Object node) {
-        if (node == null || !_knownNodes.contains(node)) return;
+        if (node == null || !_knownNodes.contains(node))
+            return;
         _tracer.leave(id(node));
         Tracer.delay();
-        if (_lastVisited == node) _lastVisited = null;
+        if (_lastVisited == node)
+            _lastVisited = null;
     }
 
     public void select(Object node) {
-        if (node == null || !_knownNodes.contains(node)) return;
+        if (node == null || !_knownNodes.contains(node))
+            return;
         _tracer.select(id(node));
         Tracer.delay();
     }
 
     public void deselect(Object node) {
-        if (node == null || !_knownNodes.contains(node)) return;
+        if (node == null || !_knownNodes.contains(node))
+            return;
         _tracer.deselect(id(node));
         Tracer.delay();
-    }
-
-    public boolean isTreeNode(Object obj) {
-        return _knownNodes.contains(obj);
     }
 
     public boolean isTrackedNode(Object obj) {
@@ -160,7 +163,8 @@ public class TreeVisualizer implements Visualizer {
             Field f = node.getClass().getDeclaredField(_valField);
             f.setAccessible(true);
             Object val = f.get(node);
-            if (val instanceof Number n) return n.doubleValue();
+            if (val instanceof Number n)
+                return n.doubleValue();
             return 0;
         } catch (Exception e) {
             return 0;
