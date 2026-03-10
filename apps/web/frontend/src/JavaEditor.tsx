@@ -19,7 +19,7 @@ export default function JavaEditor() {
     };
 
     useEffect(() => {
-        return subscribe(() => {
+        const unsubscribe = subscribe(() => {
             const line = engine.getHighlightedLine();
             const editor = editorRef.current;
             const monaco = monacoRef.current;
@@ -43,6 +43,7 @@ export default function JavaEditor() {
 
             editor.revealLineInCenterIfOutsideViewport(line);
         });
+        return () => { unsubscribe(); };
     }, []);
 
     const handleRun = async () => {

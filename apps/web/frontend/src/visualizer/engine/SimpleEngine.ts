@@ -53,35 +53,6 @@ export class SimpleEngine {
         return this.highlightedLine;
     }
 
-    private detectSwaps(chunks: Chunk[]): Map<string, { i: number; j: number }> {
-        const swaps = new Map<string, { i: number; j: number }>();
-        const patches: Command[] = [];
-        for (const chunk of chunks) {
-            for (const c of chunk.commands) {
-                if (c.key !== null && c.method === 'patch') patches.push(c);
-            }
-        }
-
-        for (const tracerKey of new Set(patches.map(p => p.key!))) {
-            const tp = patches.filter(p => p.key === tracerKey);
-            if (tp.length !== 2) continue;
-            const tracer = this.tracers[tracerKey];
-            if (tracer?.type !== 'array') continue;
-
-            const [a, b] = tp;
-            const idxA = a.args[0], valA = a.args[1];
-            const idxB = b.args[0], valB = b.args[1];
-            if (idxA === idxB) continue;
-
-            const oldA = tracer.data[idxA]?.value;
-            const oldB = tracer.data[idxB]?.value;
-            if (valA === oldB && valB === oldA) {
-                swaps.set(tracerKey, { i: idxA, j: idxB });
-            }
-        }
-        return swaps;
-    }
-
     private applyCommand(command: Command) {
         const { key, method, args } = command;
 
@@ -425,10 +396,6 @@ export class SimpleEngine {
                 this.renderer.setData({ type: 'layout', children });
             }
         }
-    }
-
-    private isCodeTracerKey(key: string | null): boolean {
-        return key !== null && this.tracers[key]?.type === 'code';
     }
 
     next(): boolean {
