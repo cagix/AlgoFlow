@@ -370,6 +370,7 @@ public class VisualizerRegistry {
         try {
             if (!isCalledFromRunner("println"))
                 return;
+            highlightLine(getCallerLineNumber());
             if (_logVisualizer != null)
                 _logVisualizer.println(message);
         } finally {
