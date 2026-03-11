@@ -1,6 +1,18 @@
-# AlgoTransformer - Automatic Algorithm Visualization
+# AlgoFlow Engine
 
-Zero-learning-curve algorithm visualization using bytecode transformation.
+Bytecode transformation engine that auto-visualizes algorithms with zero manual instrumentation.
+
+## What It Does
+
+Write normal Java code — the engine intercepts array access, collection operations, field mutations, and method calls at the bytecode level to produce step-by-step visualization data.
+
+```java
+// No SDKs, no annotations on operations, no manual tracing.
+// Just declare your data structures and write your algorithm.
+
+int[] arr = {5, 2, 8, 1};
+arr[0] = 10;  // ← automatically visualized
+```
 
 ## Build
 
@@ -8,108 +20,102 @@ Zero-learning-curve algorithm visualization using bytecode transformation.
 mvn clean package
 ```
 
-## Run
+## Run Standalone
 
 ```bash
 java -javaagent:target/algo-transformer-1.0-SNAPSHOT.jar \
      -cp target/algo-transformer-1.0-SNAPSHOT.jar \
      --add-opens java.base/java.util=ALL-UNNAMED \
-     --add-opens java.base/javax.net.ssl=ALL-UNNAMED \
      com.algoflow.runner.YourExample
 ```
 
-## The Problem
-
-Existing tools require manual instrumentation:
-```java
-array.select(i);
-Tracer.delay();
-array.patch(i, value);
-Tracer.delay();
-```
-
-## The Solution
-
-Write normal code, visualization happens automatically:
-```java
-int[] arr = {5, 2, 8, 1};
-// Just declare fields — the agent auto-detects and visualizes them
-
-arr[0] = 10;  // Auto-visualized!
-```
+Outputs `visualization.json` — an array of tracer commands consumed by the frontend.
 
 ## Supported Data Structures
 
-| Type | Declaration | Visualization |
-|------|-----------|---------------|
-| Primitive 1D arrays | `int[] arr`, `boolean[] visited` | Array1DTracer |
-| Primitive 2D arrays | `int[][] matrix` | Array2DTracer |
-| Graphs | `@Graph int[][] adjMatrix` | GraphTracer (adjacency matrix) |
+| Type | Declaration | Visualizer |
+|------|-------------|------------|
+| 1D arrays | `int[] arr` | Array1DTracer |
+| 2D arrays | `int[][] matrix` | Array2DTracer |
+| Graphs | `@Graph int[][] adj` | GraphTracer |
+| Binary trees | `@Tree TreeNode root` | GraphTracer + layoutTree |
 | Lists | `List<Integer> list` | Array1DTracer |
 | 2D Lists | `List<List<Integer>> grid` | Array2DTracer |
-| Queues/Deques | `Queue<Integer> q = new LinkedList<>()` | Array1DTracer |
+| Queues/Deques | `Queue<Integer> q` | Array1DTracer |
 | PriorityQueues | `PriorityQueue<Integer> pq` | Array1DTracer |
 
-### `@Graph` Options
+### `@Graph`
 
 ```java
-@Graph                          // undirected, unweighted
-@Graph(directed = true)         // directed
-@Graph(weighted = true)         // weighted
-@Graph(directed = true, weighted = true)
+@Graph                                    // undirected, unweighted
+@Graph(directed = true)                   // directed
+@Graph(weighted = true)                   // weighted
+@Graph(directed = true, weighted = true)  // both
 ```
 
-> **Note:** Only `int[][]` adjacency matrices are supported. Map and List-based adjacency representations are not supported due to JVM bootstrap recursion issues.
+Only `int[][]` adjacency matrices are supported.
+
+### `@Tree`
+
+```java
+@Tree TreeNode root;
+```
+
+Zero-config — auto-detects `val`, `left`, `right` fields from the node class. Any class with two self-referential fields (children) and a non-self field (value) works. Root can start as `null`.
 
 ## Auto-Tracked Panels
 
-- **CallStack** — method enter/exit tracking for runner classes
+- **CallStack** — method enter/exit for runner classes
 - **Locals** — local variable updates within methods
-- **Console** — `System.out.println` calls from runner code only
-
-## How It Works
-
-1. **ByteBuddy Agent** — transforms bytecode at class load time
-2. **Field Scanning** — `VisualizerInitializer` auto-registers fields as visualizers on construction
-3. **Array Interception** — `ArrayAccessWrapper` rewrites `IALOAD`/`IASTORE` etc. to call `VisualizerRegistry`
-4. **Collection Interception** — `CollectionInterceptor` / `ListInterceptor` intercept `add`/`remove`/`get`/`set`/`poll`/`offer`/`push`/`pop`/`clear`
-5. **Reentrant Guard** — `ThreadLocal<Boolean>` prevents recursive interception from JVM-internal collection usage
-6. **Console Filtering** — `StackWalker`-based check ensures only runner `println` calls are logged
+- **Console** — `System.out.println` calls from runner code
+- **Line Tracker** — highlights the currently executing line
 
 ## Architecture
 
-```
-agent/
-├── VisualizerAgent.java          # Premain entry, wires ByteBuddy transforms
-├── VisualizerBridge.java         # Bootstrap-loaded bridge (listeners)
-├── ArrayAccessWrapper.java       # ASM visitor for array read/write
-├── CollectionInterceptor.java    # Advice for add/remove/clear
-├── ListInterceptor.java          # Advice for get/set (index-based)
-├── PrintStreamInterceptor.java   # Advice for println
-├── ConstructorInterceptor.java   # Triggers field auto-scan
-├── RecursionInterceptor.java     # Method enter/exit for CallStack
-├── LocalVariableTrackerWrapper.java  # Tracks local variable stores
-└── StaticInitInterceptor.java    # Static field scanning
+### Agent Layer (`agent/`)
 
-annotation/
-├── Graph.java                    # @Graph(directed, weighted)
-└── ...
+Bytecode transformers wired by `VisualizerAgent` via ByteBuddy at class load time.
 
-visualiser/
-├── VisualizerRegistry.java       # Central dispatch for all events
-├── VisualizerInitializer.java    # Auto-scans fields, creates visualizers
-├── GraphVisualizer.java          # Graph visit/leave with source tracking
-├── Array1DVisualiser.java        # List/Collection → Array1DTracer
-├── PrimitiveArray1DVisualizer.java   # int[]/boolean[] → Array1DTracer
-├── Array2DVisualiser.java        # List<List> → Array2DTracer
-├── PrimitiveArray2DVisualizer.java   # int[][] → Array2DTracer
-├── CallStackVisualizer.java      # Method call stack
-├── LocalVariablesVisualizer.java # Local variable table
-└── LogVisualizer.java            # Console output
-```
+| File | What it intercepts |
+|------|--------------------|
+| `ArrayAccessWrapper` | `IALOAD`/`IASTORE` etc. → array read/write events |
+| `FieldAccessWrapper` | `GETFIELD`/`PUTFIELD` → tree node field access |
+| `CollectionInterceptor` | `add`/`remove`/`clear`/`offer`/`poll`/`push`/`pop` |
+| `ListInterceptor` | `get`/`set` (index-based) |
+| `IteratorInterceptor` | `iterator()`/`next()` on collections |
+| `PrintStreamInterceptor` | `writeln`/`write` on PrintStream |
+| `RecursionInterceptor` | Method enter/exit for call stack tracking |
+| `ConstructorInterceptor` | Triggers field auto-scan after object construction |
+| `StaticInitInterceptor` | Static field scanning |
+| `LocalVariableTrackerWrapper` | Local variable store instructions |
+
+### Visualizer Layer (`visualiser/`)
+
+Receives events from the agent layer and translates them into tracer commands.
+
+| File | Role |
+|------|------|
+| `VisualizerRegistry` | Central dispatch — routes all events to the right visualizer |
+| `VisualizerInitializer` | Auto-scans fields on construction, creates visualizers |
+| `PrimitiveArray1DVisualizer` | `int[]`/`boolean[]` → Array1DTracer |
+| `PrimitiveArray2DVisualizer` | `int[][]` → Array2DTracer |
+| `Array1DVisualiser` | `List`/`Queue`/`Deque` → Array1DTracer |
+| `Array2DVisualiser` | `List<List>` → Array2DTracer |
+| `GraphVisualizer` | Adjacency matrix → GraphTracer |
+| `TreeVisualizer` | Binary tree → GraphTracer with `layoutTree` |
+| `CallStackVisualizer` | Method call stack |
+| `LocalVariablesVisualizer` | Local variable table |
+| `LogVisualizer` | Console output |
+| `CodeVisualizer` | Line highlighting |
+
+### Annotations (`annotation/`)
+
+| Annotation | Target | Purpose |
+|------------|--------|---------|
+| `@Graph` | Field | Marks `int[][]` as adjacency matrix |
+| `@Tree` | Field | Marks a field as binary tree root |
 
 ## Limitations
 
-- `@Graph` only supports `int[][]` — intercepting `HashMap`/`Iterator` causes JVM bootstrap recursion
-- Collections must be declared as fields — auto-registration of unknown collections is disabled
-- `for-each` over collections uses `Iterator` which cannot be safely intercepted — use indexed `for` loops with `get(i)` for visualization
+- `@Graph` only supports `int[][]` — `HashMap`/`Iterator` interception causes JVM bootstrap recursion
+- `@Tree` auto-detection requires exactly two self-referential fields in the node class

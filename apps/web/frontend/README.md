@@ -1,88 +1,64 @@
-# Java Code Visualizer - Working!
+# AlgoPad Frontend
 
-## ✅ Build Successful
+React + TypeScript frontend for AlgoPad — a Java algorithm visualizer.
 
-The frontend now uses a **minimal custom renderer** instead of algorithm-visualizer's complex React components.
+> 🤖 This entire frontend was vibe-coded using [Amazon Q Developer](https://aws.amazon.com/q/developer/) — zero manual code changes.
 
 ## Quick Start
 
 ```bash
+npm install
 npm run dev
 ```
 
 Open http://localhost:5173
 
-## Features
+## Scripts
 
-- ✅ Monaco Editor for Java code
-- ✅ Canvas-based array visualization
-- ✅ Player controls (play, pause, step, reset)
-- ✅ Backend API ready
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start dev server |
+| `npm run build` | Type-check + production build |
+| `npm run preview` | Preview production build |
+| `npm run lint` | Run ESLint |
+
+## Tech Stack
+
+- **React 19** + **TypeScript**
+- **Vite** — build tool
+- **Monaco Editor** — code editor with Java IntelliSense
+- **Canvas API** — custom visualization renderer
+
+## Project Structure
+
+```
+src/
+├── api/backend.ts              # Backend API calls
+├── constants/
+│   ├── algorithms.ts           # Default code, examples, templates
+│   └── javaCompletions.ts      # Monaco Java completions
+├── visualizer/
+│   ├── engine/
+│   │   ├── SimpleEngine.ts     # Command processing & state
+│   │   └── SimpleRenderer.ts   # Canvas rendering
+│   ├── AlgorithmVisualizerPane.tsx
+│   ├── Controls.tsx            # Playback controls
+│   ├── VisualizerCanvas.tsx    # Canvas container + panels
+│   └── visualizerEngine.ts    # Shared engine instance
+├── App.tsx                     # Root layout
+├── JavaEditor.tsx              # Editor + toolbar
+└── main.tsx                    # Entry point
+```
 
 ## Supported Visualizations
 
-Currently supports:
-- **Array1DTracer**: 1D array visualization with selection highlighting
-- **RecursionTracer**: Stack-based recursion call visualization
-- **VariableTracer**: Local variable display
-- **LogTracer**: Console log output
-- **VerticalLayout**: Stack multiple tracers vertically
+- **Arrays** — 1D and 2D with selection/patch highlighting
+- **Graphs** — Undirected, directed, weighted (adjacency matrix)
+- **Trees** — Binary trees via `@Tree` annotation
+- **Recursion** — Call stack tracking
+- **Variables** — Local variable display
+- **Logs** — Console output
 
 ## Backend Integration
 
-Your Java backend should return commands:
-
-```json
-[
-  { "key": "arr", "method": "Array1DTracer", "args": ["Array Name"] },
-  { "key": "arr", "method": "set", "args": [[5, 3, 8, 1, 9, 2]] },
-  { "key": null, "method": "setRoot", "args": ["arr"] },
-  { "key": null, "method": "delay", "args": [1] },
-  { "key": "arr", "method": "select", "args": [0] },
-  { "key": null, "method": "delay", "args": [2] },
-  { "key": "arr", "method": "deselect", "args": [0] },
-  { "key": "arr", "method": "patch", "args": [0, 10] }
-]
-```
-
-### Supported Methods
-
-**Array1DTracer:**
-- `Array1DTracer`: Create array tracer
-- `set`: Set array values
-- `select`: Highlight element (blue)
-- `deselect`: Remove highlight
-- `patch`: Update element value
-- `depatch`: Remove patch highlight
-
-**LogTracer:**
-- `LogTracer`: Create log tracer
-- `set`: Set log content
-- `print`: Append to log
-- `println`: Append line to log
-
-**RecursionTracer:**
-- `RecursionTracer`: Create recursion tracer
-- `set`: Set call stack
-- `push`: Add method call (method, params)
-- `pop`: Mark last call as inactive
-
-**VariableTracer:**
-- `VariableTracer`: Create variable tracer
-- `set`: Set all variables
-- `setVar`: Set single variable (name, value)
-
-**VerticalLayout:**
-- `VerticalLayout`: Create vertical layout with child tracers
-- `setRoot`: Set active tracer/layout
-- `delay`: Create animation step
-
-## Adding More Visualizations
-
-Edit `src/visualizer/engine/SimpleEngine.ts` and `SimpleRenderer.ts` to add:
-- 2D arrays
-- Graphs
-- Trees
-- Logs
-
-The architecture is minimal and easy to extend!
+The frontend sends Java code to the backend, which returns a list of visualization commands. See the backend README for the command protocol.
