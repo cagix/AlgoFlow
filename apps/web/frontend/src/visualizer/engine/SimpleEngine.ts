@@ -207,15 +207,13 @@ export class SimpleEngine {
                 const to = t.namedNodes.has(toId) ? t.namedNodes.get(toId) : (isNaN(Number(toId)) ? -1 : Math.floor(Number(toId)));
                 if (from >= 0 && to >= 0 && t.adjMatrix[from]) {
                     t.adjMatrix[from][to] = args[2] ?? 1;
-                    if (!t.edges.some(([a, b]: [number, number]) => a === from && b === to)) {
-                        const posKey = `${from}-${to}`;
-                        const origIdx = t.removedEdgePositions?.get(posKey);
-                        if (origIdx !== undefined) {
-                            t.edges.splice(Math.min(origIdx, t.edges.length), 0, [from, to]);
-                            t.removedEdgePositions.delete(posKey);
-                        } else {
-                            t.edges.push([from, to]);
-                        }
+                    const posKey = `${from}-${to}`;
+                    const origIdx = t.removedEdgePositions?.get(posKey);
+                    if (origIdx !== undefined) {
+                        t.edges.splice(Math.min(origIdx, t.edges.length), 0, [from, to]);
+                        t.removedEdgePositions.delete(posKey);
+                    } else {
+                        t.edges.push([from, to]);
                     }
                 }
                 this.updateRenderer();

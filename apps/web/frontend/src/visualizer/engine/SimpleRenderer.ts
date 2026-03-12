@@ -530,14 +530,24 @@ export class SimpleRenderer {
 
         // Draw edges (skip edges to/from null sentinel nodes)
         if (directed) {
-            for (let i = 0; i < n; i++) {
-                for (let j = 0; j < n; j++) {
-                    if (i === j || !adjMatrix[i]?.[j]) continue;
-                    if (isNull(i) || isNull(j)) continue;
-                    const a = Math.min(i, j), b = Math.max(i, j);
+            if (layout === 'tree' && edges?.length) {
+                // For tree layout, draw from edges array to support duplicate edges
+                for (const [from, to] of edges) {
+                    if (isNull(from) || isNull(to)) continue;
+                    const a = Math.min(from, to), b = Math.max(from, to);
                     const visited = edgeSet.has(`${a}-${b}`);
-                    const bidir = !!(adjMatrix[j]?.[i]);
-                    this.drawDirectedEdge(pos[i], pos[j], nodeR, visited, bidir ? (i < j ? 1 : -1) : 0, weighted ? adjMatrix[i][j] : 0);
+                    this.drawDirectedEdge(pos[from], pos[to], nodeR, visited, 0, weighted ? (adjMatrix[from]?.[to] || 0) : 0);
+                }
+            } else {
+                for (let i = 0; i < n; i++) {
+                    for (let j = 0; j < n; j++) {
+                        if (i === j || !adjMatrix[i]?.[j]) continue;
+                        if (isNull(i) || isNull(j)) continue;
+                        const a = Math.min(i, j), b = Math.max(i, j);
+                        const visited = edgeSet.has(`${a}-${b}`);
+                        const bidir = !!(adjMatrix[j]?.[i]);
+                        this.drawDirectedEdge(pos[i], pos[j], nodeR, visited, bidir ? (i < j ? 1 : -1) : 0, weighted ? adjMatrix[i][j] : 0);
+                    }
                 }
             }
         } else {
@@ -623,7 +633,7 @@ export class SimpleRenderer {
         // Compute subtree leaf counts bottom-up
         for (let i = order.length - 1; i >= 0; i--) {
             const node = order[i];
-            const kids = children[node].filter(c => visited.has(c) || true);
+            const kids = [...new Set(children[node])];
             if (kids.length === 0) {
                 subtreeLeaves[node] = 1;
             } else {
@@ -634,7 +644,7 @@ export class SimpleRenderer {
         // Assign horizontal positions based on leaf ordering
         let leafCounter = 0;
         const assignLeafIndex = (node: number) => {
-            const kids = children[node];
+            const kids = [...new Set(children[node])];
             if (kids.length === 0) {
                 leafIndex[node] = leafCounter++;
             } else {
@@ -873,7 +883,7 @@ export class SimpleRenderer {
         let cx = startX;
         
         Object.entries(vars).forEach(([name, value]) => {
-            const displayValue = typeof value === 'object' ? value.value : value;
+            const displayValue = (value != null && typeof value === 'object') ? value.value : value;
             const label = `${name} = ${displayValue}`;
             const tw = this.ctx!.measureText(label).width;
             const chipW = tw + pad * 2;
