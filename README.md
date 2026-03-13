@@ -213,7 +213,6 @@ VITE_API_URL=http://localhost:8080
 
 - **Java Only**: Currently supports Java algorithms exclusively
 - **Graph Types**: `@Graph` only supports `int[][]` adjacency matrices
-- **Tree Detection**: Auto-detects classes with exactly two self-referential fields
 - **Performance**: Bytecode transformation adds overhead (acceptable for educational use)
 
 ## Roadmap
