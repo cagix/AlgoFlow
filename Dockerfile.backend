@@ -1,4 +1,4 @@
-FROM maven:3.9-amazoncorretto-21 AS build
+FROM maven:3.9-amazoncorretto-25 AS build
 
 # Build engine JAR
 COPY packages/java/engine /build/engine
@@ -11,7 +11,7 @@ WORKDIR /build/backend
 RUN mvn clean package -q -DskipTests
 
 # Runtime
-FROM amazoncorretto:21
+FROM amazoncorretto:25
 
 COPY --from=build /build/engine/target/algo-transformer-1.0-SNAPSHOT.jar /app/engine.jar
 COPY --from=build /build/backend/target/algo-backend-1.0.0.jar /app/backend.jar
