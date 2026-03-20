@@ -73,8 +73,8 @@ public class FieldAccessWrapper implements AsmVisitorWrapper {
             }
             if (opcode == Opcodes.PUTFIELD && isObjectField(descriptor)) {
                 // Stack: [objectref, newValue]
-                int newValueSlot = 200;
-                int ownerSlot = 201;
+                int newValueSlot = 2000;
+                int ownerSlot = 2001;
 
                 super.visitVarInsn(Opcodes.ASTORE, newValueSlot);
                 super.visitInsn(Opcodes.DUP);
@@ -92,8 +92,10 @@ public class FieldAccessWrapper implements AsmVisitorWrapper {
             }
             if (opcode == Opcodes.PUTFIELD && isPrimitiveField(descriptor)) {
                 // Stack: [objectref, primitiveValue]
-                int primSlot = 200;
-                int ownerSlot = 201;
+                int primSlot = 2002;
+                // double and long take 2 slots
+                boolean wide = descriptor.charAt(0) == 'J' || descriptor.charAt(0) == 'D';
+                int ownerSlot = wide ? 2004 : 2003;
 
                 storePrimitive(descriptor, primSlot);
                 super.visitInsn(Opcodes.DUP);

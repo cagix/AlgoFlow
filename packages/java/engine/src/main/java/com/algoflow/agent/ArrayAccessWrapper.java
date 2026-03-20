@@ -79,8 +79,8 @@ public class ArrayAccessWrapper implements AsmVisitorWrapper {
             injectingCode = true;
 
             // Stack: [array, index]
-            int indexSlot = 100;
-            int arraySlot = 101;
+            int indexSlot = 1000;
+            int arraySlot = 1001;
 
             super.visitVarInsn(Opcodes.ISTORE, indexSlot);
             super.visitVarInsn(Opcodes.ASTORE, arraySlot);
@@ -115,9 +115,12 @@ public class ArrayAccessWrapper implements AsmVisitorWrapper {
         private void injectArrayWrite(int opcode) {
             injectingCode = true;
 
-            int valueSlot = 100;
-            int indexSlot = 101;
-            int arraySlot = 102;
+            /// Stack: [value, index, array[]]
+            int valueSlot = 1002;
+            // double and long take 2 slots
+            boolean wideValue = (opcode == Opcodes.DASTORE || opcode == Opcodes.LASTORE);
+            int indexSlot = wideValue ? 1004 : 1003;
+            int arraySlot = wideValue ? 1005 : 1004;
 
             storeValue(opcode, valueSlot);
             super.visitVarInsn(Opcodes.ISTORE, indexSlot);
