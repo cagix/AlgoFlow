@@ -59,7 +59,11 @@ export class SimpleEngine {
             this.root = args[0];
             this.updateRenderer();
         } else if (key !== null && method === 'Array1DTracer') {
-            this.tracers[key] = { type: 'array', data: [], title: args[0] };
+            const rawTitle = args[0] || '';
+            const colonIdx = rawTitle.indexOf(': ');
+            const dsType = colonIdx >= 0 ? rawTitle.substring(0, colonIdx) : undefined;
+            const displayTitle = colonIdx >= 0 ? rawTitle.substring(colonIdx + 2) : rawTitle;
+            this.tracers[key] = { type: 'array', data: [], title: displayTitle, dsType };
         } else if (key !== null && method === 'Array2DTracer') {
             const title = args[0] || '';
             if (title.toLowerCase().includes('callstack')) {
@@ -359,7 +363,7 @@ export class SimpleEngine {
             const tracer = this.tracers[this.root];
             
             if (tracer.type === 'array') {
-                this.renderer.setData({ type: 'array', data: tracer.data, title: tracer.title });
+                this.renderer.setData({ type: 'array', data: tracer.data, title: tracer.title, dsType: tracer.dsType });
             } else if (tracer.type === 'array2d') {
                 this.renderer.setData({ type: 'array2d', data: tracer.data, title: tracer.title });
             } else if (tracer.type === 'log') {
@@ -378,6 +382,9 @@ export class SimpleEngine {
     
                         if (c?.type === 'graph') {
                             return { ...c, visitedEdges: [...c.visitedEdges], directed: c.directed, weighted: c.weighted, nodeLabels: c.nodeLabels, layout: c.layout, treeRoot: c.treeRoot, edges: c.edges, namedNodes: c.namedNodes };
+                        }
+                        if (c?.type === 'array') {
+                            return { ...c, dsType: c.dsType };
                         }
                         return c;
                     })
@@ -405,6 +412,9 @@ export class SimpleEngine {
 
         if (arrayPatch) {
             const k = arrayPatch.key!;
+            // Only animate swaps for default arrays (not LinkedList, Stack, Deque, etc.)
+            const dsType = this.tracers[k]?.dsType;
+            if (!dsType || dsType === 'ArrayList' || dsType === 'Collection') {
             const idxA = arrayPatch.args[0], valA = arrayPatch.args[1];
             let foundDepatch = false;
             const maxScan = Math.min(this.cursor + 6, this.chunks.length);
@@ -426,6 +436,7 @@ export class SimpleEngine {
                         i = maxScan; break;
                     }
                 }
+            }
             }
         }
 
@@ -478,12 +489,12 @@ export class SimpleEngine {
         return this.chunks.length;
     }
 
-    getLayoutChildren(): { key: string; title: string }[] {
+    getLayoutChildren(): { key: string; title: string; dsType?: string }[] {
         if (!this.root) return [];
         const tracer = this.tracers[this.root];
         if (tracer?.type !== 'layout') return [];
         return tracer.children
-            .map((k: string) => ({ key: k, title: this.tracers[k]?.title || k }))
+            .map((k: string) => ({ key: k, title: this.tracers[k]?.title || k, dsType: this.tracers[k]?.dsType }))
             .filter((c: { key: string; title: string }) => this.tracers[c.key] && this.tracers[c.key].type !== 'code');
     }
 
@@ -496,6 +507,35 @@ export class SimpleEngine {
 
     isChildHidden(key: string): boolean {
         return this.hiddenChildren.has(key);
+    }
+
+    isLayoutRoot(): boolean {
+        if (!this.root) return false;
+        return this.tracers[this.root]?.type === 'layout';
+    }
+
+    getLayoutData(): any[] {
+        if (!this.root) return [];
+        const tracer = this.tracers[this.root];
+        if (tracer?.type !== 'layout') return [];
+        return tracer.children
+            .filter((childKey: string) => !this.hiddenChildren.has(childKey) && this.tracers[childKey]?.type !== 'code')
+            .map((childKey: string) => {
+                const c = this.tracers[childKey];
+                if (!c) return null;
+                if (c.type === 'graph') {
+                    return { ...c, visitedEdges: [...c.visitedEdges] };
+                }
+                if (c.type === 'array') {
+                    return { ...c };
+                }
+                return c;
+            })
+            .filter((child: any) => child);
+    }
+
+    getRenderer(): SimpleRenderer {
+        return this.renderer;
     }
 
     hasRecursionTracer(): boolean {

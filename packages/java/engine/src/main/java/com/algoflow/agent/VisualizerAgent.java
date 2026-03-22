@@ -116,9 +116,13 @@ public class VisualizerAgent {
                             .visit(Advice.to(ListInterceptor.SetInterceptor.class)
                                     .on(named("set").and(takesArguments(int.class, Object.class))))
                             .visit(Advice.to(CollectionInterceptor.AddInterceptor.class)
-                                    .on(named("add").or(named("offer")).or(named("push"))))
+                                    .on(named("add").or(named("offer")).or(named("push"))
+                                            .or(named("addFirst")).or(named("addLast"))
+                                            .or(named("offerFirst")).or(named("offerLast"))))
                             .visit(Advice.to(CollectionInterceptor.RemoveInterceptor.class)
-                                    .on(named("remove").or(named("poll")).or(named("pop"))))
+                                    .on(named("remove").or(named("poll")).or(named("pop"))
+                                            .or(named("pollFirst")).or(named("pollLast"))
+                                            .or(named("removeFirst")).or(named("removeLast"))))
                             .visit(Advice.to(CollectionInterceptor.ClearInterceptor.class)
                                     .on(named("clear").and(takesArguments(0))));
                 })
@@ -128,9 +132,13 @@ public class VisualizerAgent {
                     System.out.println("[VisualizerAgent] Transforming: " + type.getName());
                     return builder
                             .visit(Advice.to(CollectionInterceptor.AddInterceptor.class)
-                                    .on(named("add").or(named("offer")).or(named("push"))))
+                                    .on(named("add").or(named("offer")).or(named("push"))
+                                            .or(named("addFirst")).or(named("addLast"))
+                                            .or(named("offerFirst")).or(named("offerLast"))))
                             .visit(Advice.to(CollectionInterceptor.RemoveInterceptor.class)
-                                    .on(named("poll").or(named("pop")).or(named("remove"))))
+                                    .on(named("poll").or(named("pop")).or(named("remove"))
+                                            .or(named("pollFirst")).or(named("pollLast"))
+                                            .or(named("removeFirst")).or(named("removeLast"))))
                             .visit(Advice.to(CollectionInterceptor.ClearInterceptor.class)
                                     .on(named("clear").and(takesArguments(0))));
                 }).type(ElementMatchers.is(java.io.PrintStream.class))

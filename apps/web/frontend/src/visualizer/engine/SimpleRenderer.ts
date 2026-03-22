@@ -94,11 +94,22 @@ export class SimpleRenderer {
         this.animLoop();
     }
 
+    private onSwapFrame: (() => void) | null = null;
+
+    setSwapFrameCallback(cb: (() => void) | null) {
+        this.onSwapFrame = cb;
+    }
+
+    getSwapAnim() {
+        return this.swapAnim;
+    }
+
     private animLoop = () => {
         if (!this.swapAnim) return;
         const elapsed = performance.now() - this.swapAnim.startTime;
         this.swapAnim.progress = Math.min(elapsed / SimpleRenderer.SWAP_DURATION, 1);
         this.render();
+        this.onSwapFrame?.();
         if (this.swapAnim.progress < 1) {
             this.animFrameId = requestAnimationFrame(this.animLoop);
         } else {
@@ -150,7 +161,7 @@ export class SimpleRenderer {
         }
 
         if (this.data.type === 'array') {
-            this.renderArray(this.data.data, this.data.title);
+            this.renderArray(this.data.data, this.data.title, this.data.dsType);
         } else if (this.data.type === 'array2d') {
             this.renderArray2D(this.data.data, this.data.title);
         } else if (this.data.type === 'log') {
@@ -168,66 +179,19 @@ export class SimpleRenderer {
         }
     }
 
-    private renderArray(arr: any[], title?: string) {
+    private renderArray(arr: any[], title?: string, dsType?: string) {
         if (!this.ctx || !this.canvas) return;
-
         const dpr = window.devicePixelRatio || 1;
         const width = this.canvas.width / dpr;
         const height = this.canvas.height / dpr;
 
-        const cellWidth = Math.min(80, (width - 40) / Math.max(arr.length, 1));
-        const cellHeight = 60;
-        const totalWidth = arr.length * cellWidth;
-        const startX = (width - totalWidth) / 2;
-        const y = (height - cellHeight) / 2;
-
-        if (title) {
-            this.ctx.fillStyle = '#aaa';
-            this.ctx.font = '14px sans-serif';
-            this.ctx.textAlign = 'center';
-            this.ctx.fillText(title, width / 2, y - 15);
+        if (dsType === 'Stack') {
+            this.renderStackInBounds(arr, title, dsType, 0, 0, width, height);
+        } else if (dsType === 'LinkedList' || dsType === 'Deque') {
+            this.renderLinkedListInBounds(arr, title, dsType, 0, 0, width, height);
+        } else {
+            this.renderDefaultArrayInBounds(arr, title, dsType, 0, 0, width, height, true);
         }
-
-        const anim = this.swapAnim;
-        const t = anim ? this.easeInOut(anim.progress) : 0;
-
-        arr.forEach((item, i) => {
-            const value = typeof item === 'object' ? item.value : item;
-            const selected = typeof item === 'object' ? item.selected : false;
-            const patched = typeof item === 'object' ? item.patched : false;
-
-            let offsetX = 0;
-            let isSwapping = false;
-
-            if (anim && (i === anim.i || i === anim.j)) {
-                isSwapping = true;
-                const dist = (anim.j - anim.i) * cellWidth;
-                if (i === anim.i) {
-                    offsetX = t * dist;
-                } else {
-                    offsetX = -t * dist;
-                }
-            }
-
-            const x = startX + i * cellWidth + offsetX;
-            const cy = y;
-
-            this.ctx!.fillStyle = (isSwapping || patched) ? '#f44336' : (selected ? '#2196F3' : '#333');
-            this.ctx!.fillRect(x + 2, cy, cellWidth - 4, cellHeight);
-
-            this.ctx!.strokeStyle = '#666';
-            this.ctx!.strokeRect(x + 2, cy, cellWidth - 4, cellHeight);
-
-            this.ctx!.fillStyle = '#fff';
-            this.ctx!.font = `${Math.min(16, cellWidth * 0.35)}px monospace`;
-            this.ctx!.textAlign = 'center';
-            this.ctx!.textBaseline = 'middle';
-            this.ctx!.fillText(String(value), x + cellWidth / 2, cy + cellHeight / 2);
-
-            this.ctx!.fillStyle = '#888';
-            this.ctx!.font = '12px monospace';
-            this.ctx!.fillText(String(i), startX + i * cellWidth + cellWidth / 2, y + cellHeight + 20);
-        });
     }
 
     private renderText(text: string) {
@@ -292,7 +256,7 @@ export class SimpleRenderer {
         });
     }
 
-    private calcChildHeight(child: any): number {
+    calcChildHeight(child: any): number {
         if (child?.type === 'recursion' && child.calls) return Math.max(120, 45 + child.calls.length * 22);
         if (child?.type === 'graph') return child?.layout === 'tree' ? 300 : 250;
         if (child?.type === 'array2d' && child.data) return Math.max(120, 30 + child.data.length * 35);
@@ -302,7 +266,7 @@ export class SimpleRenderer {
         return 120;
     }
 
-    private groupLayoutChildren(children: any[]): any[] {
+    groupLayoutChildren(children: any[]): any[] {
         const grouped: any[] = [];
         const varItems: any[] = [];
         let logChild: any = null;
@@ -344,7 +308,7 @@ export class SimpleRenderer {
             this.ctx!.clip();
             
             if (child?.type === 'array' && child.data) {
-                this.renderArrayInBounds(child.data, child.title, 0, 0, width, sectionHeight);
+                this.renderArrayInBounds(child.data, child.title, 0, 0, width, sectionHeight, child.dsType);
             } else if (child?.type === 'array2d' && child.data) {
                 this.renderArray2DInBounds(child.data, child.title, 0, 0, width, sectionHeight);
             } else if (child?.type === 'log' && child.logs) {
@@ -371,62 +335,259 @@ export class SimpleRenderer {
         });
     }
 
-    private renderArrayInBounds(arr: any[], title: string | undefined, x: number, y: number, width: number, height: number) {
+    private renderArrayInBounds(arr: any[], title: string | undefined, x: number, y: number, width: number, height: number, dsType?: string) {
         if (!this.ctx) return;
+        if (dsType === 'Stack') {
+            this.renderStackInBounds(arr, title, dsType, x, y, width, height);
+        } else if (dsType === 'LinkedList' || dsType === 'Deque') {
+            this.renderLinkedListInBounds(arr, title, dsType, x, y, width, height);
+        } else {
+            this.renderDefaultArrayInBounds(arr, title, dsType, x, y, width, height, false);
+        }
+    }
 
+    private drawTitleWithBadge(title: string | undefined, dsType: string | undefined, cx: number, cy: number, fontSize: number) {
+        if (!this.ctx || !title) return;
+        if (dsType) {
+            const badgeFont = `bold ${fontSize - 1}px sans-serif`;
+            const nameFont = `${fontSize}px sans-serif`;
+            this.ctx.font = badgeFont;
+            const badgeText = dsType;
+            const badgeW = this.ctx.measureText(badgeText).width + 10;
+            const badgeH = fontSize + 6;
+            this.ctx.font = nameFont;
+            const nameW = this.ctx.measureText(title).width;
+            const totalW = badgeW + 6 + nameW;
+            const startX = cx - totalW / 2;
+
+            // badge
+            this.ctx.fillStyle = '#2a4a3a';
+            this.ctx.beginPath();
+            this.ctx.roundRect(startX, cy - badgeH / 2 - 1, badgeW, badgeH, 3);
+            this.ctx.fill();
+            this.ctx.fillStyle = '#4CAF50';
+            this.ctx.font = badgeFont;
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText(badgeText, startX + badgeW / 2, cy);
+
+            // name
+            this.ctx.fillStyle = '#aaa';
+            this.ctx.font = nameFont;
+            this.ctx.textAlign = 'left';
+            this.ctx.fillText(title, startX + badgeW + 6, cy);
+        } else {
+            this.ctx.fillStyle = '#aaa';
+            this.ctx.font = `${fontSize}px sans-serif`;
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText(title, cx, cy);
+        }
+    }
+
+    private renderDefaultArrayInBounds(arr: any[], title: string | undefined, dsType: string | undefined, x: number, y: number, width: number, height: number, large: boolean) {
+        if (!this.ctx) return;
+        const cellWidth = Math.min(large ? 80 : 60, (width - 40) / Math.max(arr.length, 1));
+        const cellHeight = large ? 60 : 40;
+        const totalWidth = arr.length * cellWidth;
+        const startX = x + (width - totalWidth) / 2;
+        const startY = y + (height - cellHeight) / 2;
+        const fontSize = large ? 14 : 12;
+
+        if (title) this.drawTitleWithBadge(title, dsType, x + width / 2, startY - (large ? 15 : 10), fontSize);
+
+        const anim = this.swapAnim;
+        const t = anim ? this.easeInOut(anim.progress) : 0;
+        const valFont = `${Math.min(large ? 16 : 14, cellWidth * 0.35)}px monospace`;
+
+        arr.forEach((item, i) => {
+            const value = typeof item === 'object' ? item.value : item;
+            const selected = typeof item === 'object' ? item.selected : false;
+            const patched = typeof item === 'object' ? item.patched : false;
+            let offsetX = 0, isSwapping = false;
+            if (anim && (i === anim.i || i === anim.j)) {
+                isSwapping = true;
+                const dist = (anim.j - anim.i) * cellWidth;
+                offsetX = i === anim.i ? t * dist : -t * dist;
+            }
+            const cx = startX + i * cellWidth + offsetX;
+            this.ctx!.fillStyle = (isSwapping || patched) ? '#f44336' : (selected ? '#2196F3' : '#333');
+            this.ctx!.fillRect(cx + 2, startY, cellWidth - 4, cellHeight);
+            this.ctx!.strokeStyle = '#666';
+            this.ctx!.strokeRect(cx + 2, startY, cellWidth - 4, cellHeight);
+            this.ctx!.fillStyle = '#fff';
+            this.ctx!.font = valFont;
+            this.ctx!.textAlign = 'center';
+            this.ctx!.textBaseline = 'middle';
+            this.ctx!.fillText(String(value), cx + cellWidth / 2, startY + cellHeight / 2);
+            this.ctx!.fillStyle = '#888';
+            this.ctx!.font = `${large ? 12 : 10}px monospace`;
+            this.ctx!.fillText(String(i), startX + i * cellWidth + cellWidth / 2, startY + cellHeight + (large ? 20 : 15));
+        });
+    }
+
+    private renderLinkedListInBounds(arr: any[], title: string | undefined, dsType: string | undefined, x: number, y: number, width: number, height: number) {
+        if (!this.ctx) return;
+        const cy = y + height / 2;
+        if (!arr.length) {
+            if (title) this.drawTitleWithBadge(title, dsType, x + width / 2, cy - 10, 12);
+            this.ctx.fillStyle = '#666';
+            this.ctx.font = '12px monospace';
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText('(empty)', x + width / 2, cy + 10);
+            return;
+        }
+        const nullW = 30;
+        const availW = width - 20 - nullW;
+        const idealNodeW = 48, idealArrowW = 24;
+        const idealTotal = arr.length * idealNodeW + (arr.length - 1) * idealArrowW;
+        const scale = idealTotal > availW ? availW / idealTotal : 1;
+        const nodeW = Math.floor(idealNodeW * scale);
+        const arrowW = Math.floor(idealArrowW * scale);
+        const nodeH = 32;
+        const totalW = arr.length * nodeW + (arr.length - 1) * arrowW;
+        const startX = x + Math.max(10, (width - totalW - nullW) / 2);
+
+        if (title) this.drawTitleWithBadge(title, dsType, x + width / 2, cy - nodeH / 2 - 14, 12);
+
+        arr.forEach((item, i) => {
+            const value = typeof item === 'object' ? item.value : item;
+            const selected = typeof item === 'object' ? item.selected : false;
+            const patched = typeof item === 'object' ? item.patched : false;
+            const nx = startX + i * (nodeW + arrowW);
+
+            this.ctx!.fillStyle = patched ? '#f44336' : (selected ? '#2196F3' : '#333');
+            this.ctx!.beginPath();
+            this.ctx!.roundRect(nx, cy - nodeH / 2, nodeW, nodeH, 6);
+            this.ctx!.fill();
+            this.ctx!.strokeStyle = '#666';
+            this.ctx!.beginPath();
+            this.ctx!.roundRect(nx, cy - nodeH / 2, nodeW, nodeH, 6);
+            this.ctx!.stroke();
+
+            this.ctx!.fillStyle = '#fff';
+            this.ctx!.font = `${Math.min(13, nodeW * 0.3)}px monospace`;
+            this.ctx!.textAlign = 'center';
+            this.ctx!.textBaseline = 'middle';
+            this.ctx!.fillText(this.truncateText(String(value), nodeW - 8), nx + nodeW / 2, cy);
+
+            if (i < arr.length - 1) {
+                const ax = nx + nodeW + 2, ax2 = ax + arrowW - 4;
+                this.ctx!.strokeStyle = '#888';
+                this.ctx!.lineWidth = 1.5;
+                this.ctx!.beginPath();
+                this.ctx!.moveTo(ax, cy);
+                this.ctx!.lineTo(ax2, cy);
+                this.ctx!.stroke();
+                this.ctx!.fillStyle = '#888';
+                this.ctx!.beginPath();
+                this.ctx!.moveTo(ax2, cy);
+                this.ctx!.lineTo(ax2 - 5, cy - 4);
+                this.ctx!.lineTo(ax2 - 5, cy + 4);
+                this.ctx!.closePath();
+                this.ctx!.fill();
+                this.ctx!.lineWidth = 1;
+            }
+        });
+
+        // null terminator
+        const lastNx = startX + (arr.length - 1) * (nodeW + arrowW);
+        const ax = lastNx + nodeW + 2, ax2 = ax + arrowW - 4;
+        this.ctx.strokeStyle = '#555';
+        this.ctx.lineWidth = 1.5;
+        this.ctx.beginPath();
+        this.ctx.moveTo(ax, cy);
+        this.ctx.lineTo(ax2, cy);
+        this.ctx.stroke();
+        this.ctx.fillStyle = '#666';
+        this.ctx.font = '11px monospace';
+        this.ctx.textAlign = 'left';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText('null', ax2 + 3, cy);
+        this.ctx.lineWidth = 1;
+    }
+
+    private renderStackInBounds(arr: any[], title: string | undefined, dsType: string | undefined, x: number, y: number, width: number, height: number) {
+        if (!this.ctx) return;
+        if (!arr.length) {
+            const cy = y + height / 2;
+            if (title) this.drawTitleWithBadge(title, dsType, x + width / 2, cy - 10, 12);
+            this.ctx.fillStyle = '#666';
+            this.ctx.font = '12px monospace';
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText('(empty)', x + width / 2, cy + 10);
+            return;
+        }
         const cellWidth = Math.min(60, (width - 40) / Math.max(arr.length, 1));
         const cellHeight = 40;
         const totalWidth = arr.length * cellWidth;
         const startX = x + (width - totalWidth) / 2;
         const startY = y + (height - cellHeight) / 2;
 
-        if (title) {
-            this.ctx.fillStyle = '#aaa';
-            this.ctx.font = '12px sans-serif';
-            this.ctx.textAlign = 'center';
-            this.ctx.fillText(title, x + width / 2, startY - 10);
-        }
+        if (title) this.drawTitleWithBadge(title, dsType, x + width / 2, startY - 10, 12);
 
-        const anim = this.swapAnim;
-        const t = anim ? this.easeInOut(anim.progress) : 0;
+        const topIdx = arr.length - 1;
 
         arr.forEach((item, i) => {
             const value = typeof item === 'object' ? item.value : item;
             const selected = typeof item === 'object' ? item.selected : false;
             const patched = typeof item === 'object' ? item.patched : false;
+            const cx = startX + i * cellWidth;
 
-            let offsetX = 0;
-            let isSwapping = false;
-
-            if (anim && (i === anim.i || i === anim.j)) {
-                isSwapping = true;
-                const dist = (anim.j - anim.i) * cellWidth;
-                if (i === anim.i) {
-                    offsetX = t * dist;
-                } else {
-                    offsetX = -t * dist;
-                }
-            }
-
-            const cx = startX + i * cellWidth + offsetX;
-            const cy = startY;
-
-            this.ctx!.fillStyle = (isSwapping || patched) ? '#f44336' : (selected ? '#2196F3' : '#333');
-            this.ctx!.fillRect(cx + 2, cy, cellWidth - 4, cellHeight);
-
+            this.ctx!.fillStyle = patched ? '#f44336' : (selected ? '#2196F3' : '#333');
+            this.ctx!.fillRect(cx + 2, startY, cellWidth - 4, cellHeight);
             this.ctx!.strokeStyle = '#666';
-            this.ctx!.strokeRect(cx + 2, cy, cellWidth - 4, cellHeight);
+            this.ctx!.strokeRect(cx + 2, startY, cellWidth - 4, cellHeight);
 
             this.ctx!.fillStyle = '#fff';
             this.ctx!.font = `${Math.min(14, cellWidth * 0.35)}px monospace`;
             this.ctx!.textAlign = 'center';
             this.ctx!.textBaseline = 'middle';
-            this.ctx!.fillText(String(value), cx + cellWidth / 2, cy + cellHeight / 2);
-            
-            this.ctx!.fillStyle = '#888';
-            this.ctx!.font = '10px monospace';
-            this.ctx!.fillText(String(i), startX + i * cellWidth + cellWidth / 2, startY + cellHeight + 15);
+            this.ctx!.fillText(String(value), cx + cellWidth / 2, startY + cellHeight / 2);
+
+            if (i === topIdx) {
+                this.ctx!.fillStyle = '#4CAF50';
+                this.ctx!.font = 'bold 9px sans-serif';
+                this.ctx!.textAlign = 'center';
+                this.ctx!.fillText('TOP', cx + cellWidth / 2, startY + cellHeight + 13);
+            }
         });
+    }
+
+    renderChildToCanvas(canvas: HTMLCanvasElement, child: any) {
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        const prevCanvas = this.canvas;
+        const prevCtx = this.ctx;
+        this.canvas = canvas;
+        this.ctx = ctx;
+
+        const dpr = window.devicePixelRatio || 1;
+        const width = canvas.width / dpr;
+        const height = canvas.height / dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, width, height);
+
+        if (child?.type === 'array' && child.data) {
+            this.renderArrayInBounds(child.data, child.title, 0, 0, width, height, child.dsType);
+        } else if (child?.type === 'array2d' && child.data) {
+            this.renderArray2DInBounds(child.data, child.title, 0, 0, width, height);
+        } else if (child?.type === 'log' && child.logs) {
+            this.renderLogInBounds(child.logs, child.title, 0, 0, width);
+        } else if (child?.type === 'recursion' && child.calls) {
+            this.renderRecursionInBounds(child.calls, child.title, 0, 0, width, height, 0);
+        } else if (child?.type === 'graph') {
+            this.renderGraphInBounds(child.adjMatrix, child.nodes, child.title, 0, 0, width, height, child.visitedEdges, child.directed, child.weighted, child.nodeLabels, child.layout, child.edges);
+        } else if (child?.type === 'variables' && child.vars) {
+            this.renderVariablesInBounds(child.vars, child.title, 0, 0, width, height, child.patchState);
+        } else if (child?.type === 'variablesGroup') {
+            this.renderVariablesGroupInBounds(child.items, 0, 0, width);
+        }
+
+        this.canvas = prevCanvas;
+        this.ctx = prevCtx;
     }
 
     private renderLogInBounds(logs: any[], title: string | undefined, x: number, y: number, maxWidth?: number) {

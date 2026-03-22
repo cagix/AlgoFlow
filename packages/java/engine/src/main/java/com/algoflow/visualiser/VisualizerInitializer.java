@@ -88,13 +88,25 @@ public class VisualizerInitializer {
         return true;
     }
 
+    private static String typedName(String name, Object value) {
+        String prefix = switch (value) {
+            case Stack<?> objects -> "Stack";
+            case LinkedList<?> objects -> "LinkedList";
+            case ArrayList<?> objects -> "ArrayList";
+            case ArrayDeque<?> objects -> "Deque";
+            case PriorityQueue<?> objects -> "PriorityQueue";
+            case null, default -> "Collection";
+        };
+        return prefix + ": " + name;
+    }
+
     private static boolean registerValue(String name, Object value, boolean is2DList) {
         if (value instanceof List<?> list) {
-            ListVisualizer vis = is2DList ? new Array2DVisualiser(list, name) : new Array1DVisualiser(list, name);
+            ListVisualizer vis = is2DList ? new Array2DVisualiser(list, name) : new Array1DVisualiser(list, typedName(name, value));
             VisualizerRegistry.register(vis, list);
             return true;
         } else if (value instanceof Collection<?> collection) {
-            VisualizerRegistry.register(new Array1DVisualiser(collection, name), collection);
+            VisualizerRegistry.register(new Array1DVisualiser(collection, typedName(name, value)), collection);
             return true;
         } else if (value.getClass().isArray()) {
             if (is2DArray(value)) {
