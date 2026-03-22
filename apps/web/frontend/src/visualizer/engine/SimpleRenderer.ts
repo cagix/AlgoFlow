@@ -258,12 +258,39 @@ export class SimpleRenderer {
 
     calcChildHeight(child: any): number {
         if (child?.type === 'recursion' && child.calls) return Math.max(120, 45 + child.calls.length * 22);
-        if (child?.type === 'graph') return child?.layout === 'tree' ? 300 : 250;
-        if (child?.type === 'array2d' && child.data) return Math.max(120, 30 + child.data.length * 35);
+        if (child?.type === 'graph') {
+            const n = child.nodes?.length || 0;
+            if (child.layout === 'tree') return Math.max(450, n * 20);
+            const nodeR = Math.max(10, Math.min(20, 200 / Math.max(n, 1)));
+            const minR = n > 1 ? (n * (nodeR * 2 + 12)) / (2 * Math.PI) : 40;
+            return Math.max(400, (minR + nodeR + 10) * 2 + 25);
+        }
+        if (child?.type === 'array2d' && child.data) return Math.max(120, 30 + child.data.length * 40);
         if (child?.type === 'variables' && child.vars) return Math.max(60, 45 + 28);
         if (child?.type === 'variablesGroup') return 25 + child.items.length * 32;
         if (child?.type === 'log' && child.logs) return Math.max(80, 36 + child.logs.length * 16);
         return 120;
+    }
+
+    calcChildWidth(child: any): number {
+        if (child?.type === 'array' && child.data) {
+            const n = child.data.length;
+            const dsType = child.dsType;
+            if (dsType === 'LinkedList' || dsType === 'Deque') return n * 48 + (n - 1) * 24 + 60;
+            if (dsType === 'Stack') return n * 60 + 40;
+            return n * 60 + 40;
+        }
+        if (child?.type === 'array2d' && child.data) {
+            const cols = child.data[0]?.length || 1;
+            return cols * 40 + 40;
+        }
+        if (child?.type === 'graph') {
+            const n = child.nodes?.length || 0;
+            const nodeR = Math.max(10, Math.min(20, 200 / Math.max(n, 1)));
+            const minR = n > 1 ? (n * (nodeR * 2 + 12)) / (2 * Math.PI) : 40;
+            return (minR + nodeR + 10) * 2;
+        }
+        return 0; // 0 means use container width
     }
 
     groupLayoutChildren(children: any[]): any[] {
@@ -387,7 +414,7 @@ export class SimpleRenderer {
 
     private renderDefaultArrayInBounds(arr: any[], title: string | undefined, dsType: string | undefined, x: number, y: number, width: number, height: number, large: boolean) {
         if (!this.ctx) return;
-        const cellWidth = Math.min(large ? 80 : 60, (width - 40) / Math.max(arr.length, 1));
+        const cellWidth = large ? 80 : 60;
         const cellHeight = large ? 60 : 40;
         const totalWidth = arr.length * cellWidth;
         const startX = x + (width - totalWidth) / 2;
@@ -398,7 +425,7 @@ export class SimpleRenderer {
 
         const anim = this.swapAnim;
         const t = anim ? this.easeInOut(anim.progress) : 0;
-        const valFont = `${Math.min(large ? 16 : 14, cellWidth * 0.35)}px monospace`;
+        const valFont = `${large ? 16 : 14}px monospace`;
 
         arr.forEach((item, i) => {
             const value = typeof item === 'object' ? item.value : item;
@@ -438,13 +465,7 @@ export class SimpleRenderer {
             this.ctx.fillText('(empty)', x + width / 2, cy + 10);
             return;
         }
-        const nullW = 30;
-        const availW = width - 20 - nullW;
-        const idealNodeW = 48, idealArrowW = 24;
-        const idealTotal = arr.length * idealNodeW + (arr.length - 1) * idealArrowW;
-        const scale = idealTotal > availW ? availW / idealTotal : 1;
-        const nodeW = Math.floor(idealNodeW * scale);
-        const arrowW = Math.floor(idealArrowW * scale);
+        const nodeW = 48, arrowW = 24, nullW = 30;
         const nodeH = 32;
         const totalW = arr.length * nodeW + (arr.length - 1) * arrowW;
         const startX = x + Math.max(10, (width - totalW - nullW) / 2);
@@ -467,7 +488,7 @@ export class SimpleRenderer {
             this.ctx!.stroke();
 
             this.ctx!.fillStyle = '#fff';
-            this.ctx!.font = `${Math.min(13, nodeW * 0.3)}px monospace`;
+            this.ctx!.font = '13px monospace';
             this.ctx!.textAlign = 'center';
             this.ctx!.textBaseline = 'middle';
             this.ctx!.fillText(this.truncateText(String(value), nodeW - 8), nx + nodeW / 2, cy);
@@ -520,7 +541,7 @@ export class SimpleRenderer {
             this.ctx.fillText('(empty)', x + width / 2, cy + 10);
             return;
         }
-        const cellWidth = Math.min(60, (width - 40) / Math.max(arr.length, 1));
+        const cellWidth = 60;
         const cellHeight = 40;
         const totalWidth = arr.length * cellWidth;
         const startX = x + (width - totalWidth) / 2;
@@ -542,7 +563,7 @@ export class SimpleRenderer {
             this.ctx!.strokeRect(cx + 2, startY, cellWidth - 4, cellHeight);
 
             this.ctx!.fillStyle = '#fff';
-            this.ctx!.font = `${Math.min(14, cellWidth * 0.35)}px monospace`;
+            this.ctx!.font = '14px monospace';
             this.ctx!.textAlign = 'center';
             this.ctx!.textBaseline = 'middle';
             this.ctx!.fillText(String(value), cx + cellWidth / 2, startY + cellHeight / 2);
@@ -633,11 +654,7 @@ export class SimpleRenderer {
         const cols = rows[0]?.length || 1;
         const nRows = rows.length;
         const titleH = title ? 25 : 0;
-        const pad = 20;
-
-        const maxCellW = Math.floor((width - pad * 2) / cols);
-        const maxCellH = Math.floor((height - pad * 2 - titleH) / nRows);
-        const cellSize = Math.max(24, Math.min(64, maxCellW, maxCellH));
+        const cellSize = 40;
 
         const gridW = cols * cellSize;
         const gridH = nRows * cellSize;
@@ -651,7 +668,7 @@ export class SimpleRenderer {
             this.ctx.fillText(title, x + width / 2, y + 16);
         }
 
-        const fontSize = Math.max(8, Math.min(12, cellSize * 0.4));
+        const fontSize = 12;
         this.ctx.font = `${fontSize}px monospace`;
         const textPad = 4;
 
@@ -678,6 +695,7 @@ export class SimpleRenderer {
                 this.ctx!.fillText(label, cx + cellSize / 2, cy + cellSize / 2);
             });
         });
+
     }
 
     private renderGraphInBounds(adjMatrix: number[][], nodes: any[], title: string | undefined, x: number, y: number, width: number, height: number, visitedEdges?: string[], directed?: boolean, weighted?: boolean, nodeLabels?: string[], layout?: string, edges?: [number, number][]) {
@@ -692,9 +710,8 @@ export class SimpleRenderer {
         }
 
         const n = nodes.length;
-        const nodeR = 20;
+        const nodeR = Math.max(10, Math.min(20, 200 / Math.max(n, 1)));
         const edgeSet = new Set(visitedEdges || []);
-
         const labels = nodeLabels || [];
 
         let pos: { x: number; y: number }[];
@@ -702,12 +719,14 @@ export class SimpleRenderer {
         if (layout === 'tree' && edges?.length) {
             pos = this.computeTreeLayout(n, edges, x, y + titleH, width, height - titleH, nodeR);
         } else {
-            const cx = x + width / 2;
-            const cy = y + titleH + (height - titleH) / 2;
-            const r = Math.min(width, height - titleH) / 2 - 30;
+            const cxC = x + width / 2;
+            const cyC = y + titleH + (height - titleH) / 2;
+            const minCircleR = n > 1 ? (n * (nodeR * 2 + 12)) / (2 * Math.PI) : 0;
+            const fitR = Math.min(width, height - titleH) / 2 - nodeR - 10;
+            const r = Math.max(minCircleR, fitR);
             pos = nodes.map((_: any, i: number) => ({
-                x: cx + r * Math.cos(2 * Math.PI * i / n - Math.PI / 2),
-                y: cy + r * Math.sin(2 * Math.PI * i / n - Math.PI / 2),
+                x: cxC + r * Math.cos(2 * Math.PI * i / n - Math.PI / 2),
+                y: cyC + r * Math.sin(2 * Math.PI * i / n - Math.PI / 2),
             }));
         }
 
@@ -774,11 +793,12 @@ export class SimpleRenderer {
             this.ctx.stroke();
 
             this.ctx.fillStyle = '#fff';
-            this.ctx.font = '13px monospace';
+            this.ctx.font = `${Math.max(8, Math.min(13, nodeR))}px monospace`;
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
             this.ctx.fillText(this.truncateText(label, nodeR * 2 - 4), pos[i].x, pos[i].y);
         }
+
     }
 
     private computeTreeLayout(n: number, edges: [number, number][], x: number, y: number, width: number, height: number, nodeR: number): { x: number; y: number }[] {

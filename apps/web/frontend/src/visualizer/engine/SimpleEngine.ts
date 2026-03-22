@@ -529,7 +529,13 @@ export class SimpleEngine {
                 if (c.type === 'array') {
                     return { ...c };
                 }
-                return c;
+                if (c.type === 'log') {
+                    return { ...c, logs: [...c.logs] };
+                }
+                if (c.type === 'variables') {
+                    return { ...c, patchState: c.patchState ? { ...c.patchState } : undefined };
+                }
+                return { ...c };
             })
             .filter((child: any) => child);
     }

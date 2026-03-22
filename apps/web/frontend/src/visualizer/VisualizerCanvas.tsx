@@ -10,7 +10,9 @@ function ChildPane({ child, renderer }: { child: any; renderer: any }) {
         const container = containerRef.current;
         if (!canvas || !container) return;
         const dpr = window.devicePixelRatio || 1;
-        const w = container.clientWidth;
+        const containerW = container.clientWidth;
+        const naturalW = renderer.calcChildWidth(child) || containerW;
+        const w = Math.max(containerW, naturalW);
         const h = renderer.calcChildHeight(child);
         const newW = Math.round(w * dpr);
         const newH = Math.round(h * dpr);
@@ -41,13 +43,19 @@ function ChildPane({ child, renderer }: { child: any; renderer: any }) {
         return () => renderer.setSwapFrameCallback(prev);
     }, [child, renderer, paint]);
 
+    const naturalH = renderer.calcChildHeight(child);
+    const naturalW = renderer.calcChildWidth(child);
+    const needsScroll = naturalH > 450 || naturalW > 0;
+    const maxH = needsScroll ? Math.max(60, Math.round(naturalH * 0.9)) : naturalH;
+
     return (
         <div
             ref={containerRef}
             style={{
                 flex: "0 0 auto",
                 minHeight: 60,
-                overflowX: "hidden",
+                maxHeight: maxH,
+                overflow: "auto",
                 borderBottom: "1px solid #333",
             }}
         >
@@ -140,7 +148,7 @@ export default function VisualizerCanvas() {
             {isLayout && grouped.length > 0 ? (
                 <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", background: "#111" }}>
                     {grouped.map((child: any, i: number) => (
-                        <ChildPane key={i} child={child} renderer={renderer} />
+                        <ChildPane key={child.title || child.type + i} child={child} renderer={renderer} />
                     ))}
                 </div>
             ) : null}
