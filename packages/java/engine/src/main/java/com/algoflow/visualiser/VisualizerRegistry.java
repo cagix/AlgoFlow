@@ -15,7 +15,7 @@ public class VisualizerRegistry {
     private static final Map<Object, GraphVisualizer> _graphToVisualizer = new IdentityHashMap<>();
     private static final List<TreeVisualizer> _treeVisualizers = new ArrayList<>();
     private static LogVisualizer _logVisualizer;
-    private static final Map<String, LocalVariablesVisualizer> _localVariablesVisualizers = new HashMap<>();
+    private static LocalVariablesVisualizer _localVariablesVisualizer;
     private static CallStackVisualizer _callStackVisualizer;
     private static CodeVisualizer _codeVisualizer;
 
@@ -103,6 +103,8 @@ public class VisualizerRegistry {
                 setLayout();
             }
             _callStackVisualizer.onEnter(methodName, args);
+            ensureLocalVariablesVisualizer();
+            _localVariablesVisualizer.pushFrame(methodName);
             highlightLine(getCallerLineNumber());
         } finally {
             _processing = false;
@@ -117,6 +119,9 @@ public class VisualizerRegistry {
             if (_callStackVisualizer != null) {
                 highlightLine(getCallerLineNumber());
                 _callStackVisualizer.onExit(methodName, result);
+                if (_localVariablesVisualizer != null) {
+                    _localVariablesVisualizer.popFrame();
+                }
                 highlightLine(getCallerCallerLineNumber());
             }
         } finally {
@@ -124,9 +129,12 @@ public class VisualizerRegistry {
         }
     }
 
-    public static void registerLocalVariables(String methodKey, LocalVariablesVisualizer visualizer) {
-        _localVariablesVisualizers.put(methodKey, visualizer);
-        _visualizers.add(visualizer.getCommander());
+    private static void ensureLocalVariablesVisualizer() {
+        if (_localVariablesVisualizer == null) {
+            _localVariablesVisualizer = new LocalVariablesVisualizer("Locals");
+            _visualizers.add(_localVariablesVisualizer.getCommander());
+            setLayout();
+        }
     }
 
     private static volatile boolean _processing = false;
@@ -440,14 +448,8 @@ public class VisualizerRegistry {
 
         highlightLine(getCallerLineNumber());
 
-        LocalVariablesVisualizer visualizer = _localVariablesVisualizers.get(methodKey);
-        if (visualizer == null) {
-            String methodName = methodKey.substring(methodKey.lastIndexOf('#') + 1, methodKey.lastIndexOf('('));
-            visualizer = new LocalVariablesVisualizer("Locals - " + methodName);
-            registerLocalVariables(methodKey, visualizer);
-            setLayout();
-        }
-        visualizer.onVariableUpdate(variableName, value);
+        ensureLocalVariablesVisualizer();
+        _localVariablesVisualizer.onVariableUpdate(variableName, value);
     }
 
     private static GraphVisualizer findParentGraph(Object subarray) {

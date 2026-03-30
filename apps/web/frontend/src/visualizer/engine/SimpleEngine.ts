@@ -68,6 +68,8 @@ export class SimpleEngine {
             const title = args[0] || '';
             if (title.toLowerCase().includes('callstack')) {
                 this.tracers[key] = { type: 'recursion', calls: [], title: args[0] };
+            } else if (title.toLowerCase() === 'locals') {
+                this.tracers[key] = { type: 'locals', rows: [], patchedRows: new Set<number>(), title: args[0] };
             } else if (title.toLowerCase().includes('variable') || title.toLowerCase().includes('local')) {
                 this.tracers[key] = { type: 'variables', vars: {}, title: args[0] };
             } else {
@@ -120,6 +122,12 @@ export class SimpleEngine {
                 this.tracers[key].adjMatrix = matrix;
                 this.tracers[key].nodes = matrix.map((_: any, i: number) => ({ state: 'default', index: i }));
                 this.tracers[key].visitedEdges = new Set<string>();
+                this.updateRenderer();
+            } else if (this.tracers[key]?.type === 'locals') {
+                const rawData = args[0];
+                const unwrapped = (rawData.length === 1 && Array.isArray(rawData[0]) && Array.isArray(rawData[0][0])) ? rawData[0] : rawData;
+                this.tracers[key].rows = unwrapped.map((r: any[]) => [r[0], r[1]]);
+                this.tracers[key].patchedRows = new Set<number>();
                 this.updateRenderer();
             } else if (this.tracers[key]?.type === 'variables') {
                 const rawData = args[0];
@@ -318,6 +326,9 @@ export class SimpleEngine {
             } else if (this.tracers[key]?.type === 'recursion' && this.tracers[key]?.calls?.[args[0]]) {
                 this.tracers[key].calls[args[0]].patched = true;
                 this.updateRenderer();
+            } else if (this.tracers[key]?.type === 'locals') {
+                this.tracers[key].patchedRows.add(Math.floor(args[0]));
+                this.updateRenderer();
             } else if (this.tracers[key]?.type === 'variables') {
                 if (args.length >= 2) {
                     const varNames = Object.keys(this.tracers[key].vars);
@@ -342,6 +353,9 @@ export class SimpleEngine {
                 this.updateRenderer();
             } else if (this.tracers[key]?.type === 'recursion' && this.tracers[key]?.calls?.[args[0]]) {
                 this.tracers[key].calls[args[0]].patched = false;
+                this.updateRenderer();
+            } else if (this.tracers[key]?.type === 'locals') {
+                this.tracers[key].patchedRows.delete(Math.floor(args[0]));
                 this.updateRenderer();
             } else if (this.tracers[key]?.type === 'variables') {
                 if (args.length >= 1) {
@@ -370,6 +384,8 @@ export class SimpleEngine {
                 this.renderer.setData({ type: 'log', logs: tracer.logs, title: tracer.title });
             } else if (tracer.type === 'recursion') {
                 this.renderer.setData({ type: 'recursion', calls: tracer.calls, title: tracer.title });
+            } else if (tracer.type === 'locals') {
+                this.renderer.setData({ type: 'locals', rows: [...tracer.rows], patchedRows: new Set(tracer.patchedRows), title: tracer.title });
             } else if (tracer.type === 'variables') {
                 this.renderer.setData({ type: 'variables', vars: tracer.vars, title: tracer.title, patchState: tracer.patchState });
             } else if (tracer.type === 'graph') {
@@ -391,6 +407,9 @@ export class SimpleEngine {
                         }
                         if (c?.type === 'variables') {
                             return { ...c, patchState: c.patchState ? { ...c.patchState } : undefined };
+                        }
+                        if (c?.type === 'locals') {
+                            return { ...c, rows: [...c.rows], patchedRows: new Set(c.patchedRows) };
                         }
                         return { ...c };
                     })
@@ -501,7 +520,11 @@ export class SimpleEngine {
         if (tracer?.type !== 'layout') return [];
         return tracer.children
             .map((k: string) => ({ key: k, title: this.tracers[k]?.title || k, dsType: this.tracers[k]?.dsType }))
-            .filter((c: { key: string; title: string }) => this.tracers[c.key] && this.tracers[c.key].type !== 'code');
+            .filter((c: { key: string; title: string }) => {
+                const t = this.tracers[c.key];
+                if (!t || t.type === 'code' || t.type === 'recursion') return false;
+                return true;
+            });
     }
 
     toggleChild(key: string) {
@@ -537,6 +560,9 @@ export class SimpleEngine {
                 }
                 if (c.type === 'log') {
                     return { ...c, logs: [...c.logs] };
+                }
+                if (c.type === 'locals') {
+                    return { ...c, rows: [...c.rows], patchedRows: new Set(c.patchedRows) };
                 }
                 if (c.type === 'variables') {
                     return { ...c, patchState: c.patchState ? { ...c.patchState } : undefined };

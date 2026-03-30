@@ -16,6 +16,7 @@ export class SimpleRenderer {
     private resizeObserver: ResizeObserver | null = null;
     private clickRegions: { x: number; y: number; w: number; h: number; action: () => void }[] = [];
     private handleClick: ((e: MouseEvent) => void) | null = null;
+    private expandedFrames: Set<number> = new Set();
 
     private static readonly SWAP_DURATION = 300;
 
@@ -170,6 +171,8 @@ export class SimpleRenderer {
             this.renderRecursion(this.data.calls, this.data.title);
         } else if (this.data.type === 'variables') {
             this.renderVariables(this.data.vars, this.data.title, this.data.patchState);
+        } else if (this.data.type === 'locals') {
+            this.renderLocalsInBounds(this.data.rows, this.data.patchedRows, this.data.title, 0, 0, width);
         } else if (this.data.type === 'graph') {
             this.renderGraphInBounds(this.data.adjMatrix, this.data.nodes, this.data.title, 0, 0, width, height, this.data.visitedEdges, this.data.directed, this.data.weighted, this.data.nodeLabels, this.data.layout, this.data.edges);
         } else if (this.data.type === 'layout') {
@@ -282,6 +285,9 @@ export class SimpleRenderer {
         }
         if (child?.type === 'array2d' && child.data) return Math.max(120, 30 + child.data.length * 40);
         if (child?.type === 'variables' && child.vars) return Math.max(60, 45 + 28);
+        if (child?.type === 'locals' && child.rows) {
+            return this.calcLocalsHeight(child.rows);
+        }
         if (child?.type === 'variablesGroup') return 25 + child.items.length * 32;
         if (child?.type === 'log' && child.logs) return Math.max(80, 36 + child.logs.length * 16);
         return 120;
@@ -311,11 +317,16 @@ export class SimpleRenderer {
         const grouped: any[] = [];
         const varItems: any[] = [];
         let logChild: any = null;
+        let recursionChild: any = null;
         for (const child of children) {
             if (child?.type === 'variables') {
                 varItems.push(child);
             } else if (child?.type === 'log') {
                 logChild = child;
+            } else if (child?.type === 'recursion') {
+                recursionChild = child;
+            } else if (child?.type === 'locals') {
+                grouped.push({ ...child, callStack: recursionChild });
             } else {
                 grouped.push(child);
             }
@@ -350,6 +361,8 @@ export class SimpleRenderer {
             
             if (child?.type === 'array' && child.data) {
                 this.renderArrayInBounds(child.data, child.title, 0, 0, width, sectionHeight, child.dsType);
+            } else if (child?.type === 'locals' && child.rows) {
+                this.renderLocalsInBounds(child.rows, child.patchedRows, child.title, 0, 0, width, child.callStack);
             } else if (child?.type === 'array2d' && child.data) {
                 this.renderArray2DInBounds(child.data, child.title, 0, 0, width, sectionHeight);
             } else if (child?.type === 'log' && child.logs) {
@@ -603,6 +616,12 @@ export class SimpleRenderer {
         });
     }
 
+    private lastChildClickRegions: { x: number; y: number; w: number; h: number; action: () => void }[] = [];
+
+    getClickRegions() {
+        return this.lastChildClickRegions;
+    }
+
     renderChildToCanvas(canvas: HTMLCanvasElement, child: any) {
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
@@ -610,6 +629,7 @@ export class SimpleRenderer {
         const prevCtx = this.ctx;
         this.canvas = canvas;
         this.ctx = ctx;
+        this.clickRegions = [];
 
         const dpr = window.devicePixelRatio || 1;
         const width = canvas.width / dpr;
@@ -619,6 +639,8 @@ export class SimpleRenderer {
 
         if (child?.type === 'array' && child.data) {
             this.renderArrayInBounds(child.data, child.title, 0, 0, width, height, child.dsType);
+        } else if (child?.type === 'locals' && child.rows) {
+            this.renderLocalsInBounds(child.rows, child.patchedRows, child.title, 0, 0, width, child.callStack);
         } else if (child?.type === 'array2d' && child.data) {
             this.renderArray2DInBounds(child.data, child.title, 0, 0, width, height);
         } else if (child?.type === 'log' && child.logs) {
@@ -633,10 +655,120 @@ export class SimpleRenderer {
             this.renderVariablesGroupInBounds(child.items, 0, 0, width);
         }
 
+        this.lastChildClickRegions = this.clickRegions;
         this.canvas = prevCanvas;
         this.ctx = prevCtx;
     }
 
+    private calcLocalsHeight(rows: any[]): number {
+        const frames = this.parseLocalsFrames(rows);
+        let h = 38;
+        for (let f = 0; f < frames.length; f++) {
+            const isTop = f === 0;
+            const show = isTop || this.expandedFrames.has(f);
+            h += (show && frames[f].vars.length > 0) ? 42 : 26;
+        }
+        return Math.max(60, h);
+    }
+
+    private parseLocalsFrames(rows: any[]): { name: string; vars: { name: string; val: any; rowIdx: number }[] }[] {
+        const frames: { name: string; vars: { name: string; val: any; rowIdx: number }[] }[] = [];
+        for (let i = 0; i < rows.length; i++) {
+            const name = String(rows[i][0]);
+            if (name.startsWith('\u25b8')) {
+                frames.push({ name: name.substring(2), vars: [] });
+            } else if (frames.length > 0) {
+                frames[frames.length - 1].vars.push({ name: name.replace(/^\s+/, ''), val: rows[i][1], rowIdx: i });
+            }
+        }
+        return frames;
+    }
+
+    private renderLocalsInBounds(rows: any[], patchedRows: Set<number>, _title: string | undefined, x: number, y: number, _width: number, callStack?: any) {
+        if (!this.ctx) return;
+        const frames = this.parseLocalsFrames(rows);
+        const csCalls = callStack?.calls || [];
+        let ly = y + 18;
+
+        this.ctx.fillStyle = '#aaa';
+        this.ctx.font = '12px sans-serif';
+        this.ctx.textAlign = 'left';
+        this.ctx.fillText('Call Stack', x + 10, ly);
+        ly += 20;
+
+        for (let f = 0; f < frames.length; f++) {
+            const frame = frames[f];
+            const isTop = f === 0;
+            const expanded = isTop || this.expandedFrames.has(f);
+            const hasVars = frame.vars.length > 0;
+            const showVars = expanded && hasVars;
+            const toggle = isTop ? '' : (expanded ? ' \u25be' : ' \u25b8');
+            const csCall = csCalls[f];
+            const returning = csCall?.patched;
+
+            const barX = x + 10 + f * 12;
+            const barW = _width - 20 - f * 12;
+            const barH = showVars ? 38 : 22;
+
+            // Bar background
+            this.ctx.fillStyle = returning ? '#b71c1c' : (isTop ? '#2E7D32' : '#333');
+            this.ctx.beginPath();
+            this.ctx.roundRect(barX, ly, barW, barH, 4);
+            this.ctx.fill();
+            this.ctx.strokeStyle = returning ? '#f44336' : (isTop ? '#4CAF50' : '#555');
+            this.ctx.beginPath();
+            this.ctx.roundRect(barX, ly, barW, barH, 4);
+            this.ctx.stroke();
+
+            // Frame name
+            this.ctx.fillStyle = isTop ? '#fff' : '#ccc';
+            this.ctx.font = 'bold 11px sans-serif';
+            this.ctx.textAlign = 'left';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText(frame.name + toggle, barX + 8, ly + 11);
+
+            if (!isTop) {
+                this.clickRegions.push({
+                    x: barX, y: ly, w: barW, h: barH,
+                    action: () => {
+                        const idx = f;
+                        if (this.expandedFrames.has(idx)) this.expandedFrames.delete(idx);
+                        else this.expandedFrames.add(idx);
+                        this.resize();
+                    }
+                });
+            }
+
+            // Variable chips inside bar
+            if (showVars) {
+                let cx = barX + 8;
+                const chipY = ly + 28;
+                this.ctx.font = '10px monospace';
+                for (const v of frame.vars) {
+                    const label = `${v.name}=${v.val}`;
+                    const tw = this.ctx.measureText(label).width;
+                    const chipW = tw + 10;
+                    const patched = patchedRows?.has(v.rowIdx);
+                    this.ctx.fillStyle = patched ? '#f44336' : 'rgba(0,0,0,0.35)';
+                    this.ctx.beginPath();
+                    this.ctx.roundRect(cx, chipY - 7, chipW, 16, 3);
+                    this.ctx.fill();
+                    this.ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+                    this.ctx.beginPath();
+                    this.ctx.roundRect(cx, chipY - 7, chipW, 16, 3);
+                    this.ctx.stroke();
+                    this.ctx.fillStyle = patched ? '#fff' : '#fff';
+                    this.ctx.font = '10px monospace';
+                    this.ctx.textAlign = 'left';
+                    this.ctx.textBaseline = 'middle';
+                    this.ctx.fillText(label, cx + 5, chipY + 1);
+                    cx += chipW + 5;
+                }
+            }
+
+            ly += barH + 4;
+        }
+    }
     private renderLogInBounds(logs: any[], title: string | undefined, x: number, y: number, maxWidth?: number) {
         if (!this.ctx) return;
         

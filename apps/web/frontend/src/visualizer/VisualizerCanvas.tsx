@@ -4,6 +4,8 @@ import { getEngine, subscribe } from "./visualizerEngine";
 function ChildPane({ child, renderer }: { child: any; renderer: any }) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
+    const regionsRef = useRef<any[]>([]);
+    const [, forceUpdate] = useState({});
 
     const paint = useCallback(() => {
         const canvas = canvasRef.current;
@@ -23,6 +25,7 @@ function ChildPane({ child, renderer }: { child: any; renderer: any }) {
             canvas.style.height = h + "px";
         }
         renderer.renderChildToCanvas(canvas, child);
+        regionsRef.current = [...renderer.getClickRegions()];
     }, [child, renderer]);
 
     useEffect(() => {
@@ -30,6 +33,27 @@ function ChildPane({ child, renderer }: { child: any; renderer: any }) {
         const ro = new ResizeObserver(paint);
         if (containerRef.current) ro.observe(containerRef.current);
         return () => ro.disconnect();
+    }, [paint]);
+
+    // Click handling for interactive elements (e.g. locals frame toggle)
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const onClick = (e: MouseEvent) => {
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            for (const r of regionsRef.current) {
+                if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
+                    r.action();
+                    paint();
+                    forceUpdate({});
+                    break;
+                }
+            }
+        };
+        canvas.addEventListener('click', onClick);
+        return () => canvas.removeEventListener('click', onClick);
     }, [paint]);
 
     // Repaint on swap animation frames for array panes
@@ -45,8 +69,9 @@ function ChildPane({ child, renderer }: { child: any; renderer: any }) {
 
     const naturalH = renderer.calcChildHeight(child);
     const naturalW = renderer.calcChildWidth(child);
-    const needsScroll = naturalH > 450 || naturalW > 0;
-    const maxH = needsScroll ? Math.max(60, Math.round(naturalH * 0.9)) : naturalH;
+    const isLocals = child?.type === 'locals';
+    const needsScroll = naturalH > 450 || naturalW > 0 || isLocals;
+    const maxH = needsScroll ? Math.max(60, isLocals ? 300 : Math.round(naturalH * 0.9)) : naturalH;
 
     return (
         <div
