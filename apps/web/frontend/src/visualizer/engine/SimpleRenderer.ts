@@ -17,6 +17,7 @@ export class SimpleRenderer {
     private clickRegions: { x: number; y: number; w: number; h: number; action: () => void }[] = [];
     private handleClick: ((e: MouseEvent) => void) | null = null;
     private expandedFrames: Set<number> = new Set();
+    private hoveredRegionIdx: number = -1;
 
     private static readonly SWAP_DURATION = 300;
 
@@ -328,6 +329,7 @@ export class SimpleRenderer {
             } else if (child?.type === 'locals') {
                 grouped.push({ ...child, callStack: recursionChild });
             } else {
+                if (child?.type === 'array' && child.data?.length === 0) continue;
                 grouped.push(child);
             }
         }
@@ -622,6 +624,14 @@ export class SimpleRenderer {
         return this.lastChildClickRegions;
     }
 
+    setHoveredRegion(idx: number) {
+        this.hoveredRegionIdx = idx;
+    }
+
+    getHoveredRegion(): number {
+        return this.hoveredRegionIdx;
+    }
+
     renderChildToCanvas(canvas: HTMLCanvasElement, child: any) {
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
@@ -711,11 +721,13 @@ export class SimpleRenderer {
             const barH = showVars ? 38 : 22;
 
             // Bar background
-            this.ctx.fillStyle = returning ? '#b71c1c' : (isTop ? '#2E7D32' : '#333');
+            const regionIdx = this.clickRegions.length;
+            const hovered = !isTop && this.hoveredRegionIdx === regionIdx;
+            this.ctx.fillStyle = returning ? '#b71c1c' : (isTop ? '#2E7D32' : (hovered ? '#444' : '#333'));
             this.ctx.beginPath();
             this.ctx.roundRect(barX, ly, barW, barH, 4);
             this.ctx.fill();
-            this.ctx.strokeStyle = returning ? '#f44336' : (isTop ? '#4CAF50' : '#555');
+            this.ctx.strokeStyle = returning ? '#f44336' : (isTop ? '#4CAF50' : (hovered ? '#888' : '#555'));
             this.ctx.beginPath();
             this.ctx.roundRect(barX, ly, barW, barH, 4);
             this.ctx.stroke();

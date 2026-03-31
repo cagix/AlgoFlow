@@ -47,16 +47,21 @@ public class LocalVariableTrackerWrapper implements AsmVisitorWrapper {
                 return mv;
 
             String methodKey = instrumentedType.getName() + "#" + name + descriptor;
-            return new LocalVariableMethodVisitor(mv, methodKey);
+            return new LocalVariableMethodVisitor(mv, methodKey, access, descriptor);
         }
     }
 
     private static class LocalVariableMethodVisitor extends MethodVisitor {
         private final String methodKey;
+        private final int access;
+        private final String descriptor;
+        private boolean codeStarted = false;
 
-        public LocalVariableMethodVisitor(MethodVisitor mv, String methodKey) {
+        public LocalVariableMethodVisitor(MethodVisitor mv, String methodKey, int access, String descriptor) {
             super(Opcodes.ASM9, mv);
             this.methodKey = methodKey;
+            this.access = access;
+            this.descriptor = descriptor;
         }
 
         @Override
@@ -66,6 +71,30 @@ public class LocalVariableTrackerWrapper implements AsmVisitorWrapper {
                 com.algoflow.visualiser.LocalVariablesVisualizer.registerSlotName(methodKey, index, name);
             }
             super.visitLocalVariable(name, descriptor, signature, start, end, index);
+        }
+
+        @Override
+        public void visitCode() {
+            super.visitCode();
+            codeStarted = true;
+            injectParameterTracking();
+        }
+
+        private void injectParameterTracking() {
+            boolean isStatic = (access & Opcodes.ACC_STATIC) != 0;
+            int slot = isStatic ? 0 : 1;
+            Type[] argTypes = Type.getArgumentTypes(descriptor);
+            for (Type argType : argTypes) {
+                int storeOpcode = argType.getOpcode(Opcodes.ISTORE);
+                int loadOpcode = getLoadOpcode(storeOpcode);
+                super.visitLdcInsn(methodKey);
+                super.visitLdcInsn(slot);
+                super.visitVarInsn(loadOpcode, slot);
+                boxIfNeeded(storeOpcode);
+                super.visitMethodInsn(Opcodes.INVOKESTATIC, "com/algoflow/visualiser/VisualizerRegistry",
+                        "onLocalVariableUpdate", "(Ljava/lang/String;ILjava/lang/Object;)V", false);
+                slot += argType.getSize();
+            }
         }
 
         @Override

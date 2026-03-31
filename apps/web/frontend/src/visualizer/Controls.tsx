@@ -48,6 +48,11 @@ export default function Controls() {
 
     return (
         <div style={{ background: "#1e1e1e", borderTop: "1px solid #333", padding: "6px 10px" }}>
+            <style>{`
+                .ctrl-btn { background: #333; color: #ddd; border: 1px solid #555; border-radius: 4px; padding: 4px 10px; cursor: pointer; font-size: 14px; transition: background 0.15s, border-color 0.15s; }
+                .ctrl-btn:hover { background: #4a4a4a; border-color: #888; }
+                .ctrl-btn:active { background: #555; }
+            `}</style>
             {total > 0 && (
                 <input
                     type="range"
@@ -59,10 +64,10 @@ export default function Controls() {
                 />
             )}
             <div style={{ display: "flex", gap: 8, justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
-                <button onClick={reset}>⏮</button>
-                <button onClick={stepBackward}>⏪</button>
-                <button onClick={handlePlayPause}>{isPlaying ? "⏸" : "▶"}</button>
-                <button onClick={stepForward}>⏩</button>
+                <button className="ctrl-btn" onClick={reset}>⏮</button>
+                <button className="ctrl-btn" onClick={stepBackward}>⏪</button>
+                <button className="ctrl-btn" onClick={handlePlayPause}>{isPlaying ? "⏸" : "▶"}</button>
+                <button className="ctrl-btn" onClick={stepForward}>⏩</button>
                 <span style={{ marginLeft: 8, color: "#aaa", fontSize: 13 }}>
                     {cursor}/{total}
                 </span>

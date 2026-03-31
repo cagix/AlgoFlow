@@ -35,25 +35,46 @@ function ChildPane({ child, renderer }: { child: any; renderer: any }) {
         return () => ro.disconnect();
     }, [paint]);
 
-    // Click handling for interactive elements (e.g. locals frame toggle)
+    // Click + hover handling for interactive elements (e.g. locals frame toggle)
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-        const onClick = (e: MouseEvent) => {
+        const hitTest = (e: MouseEvent) => {
             const rect = canvas.getBoundingClientRect();
             const mx = e.clientX - rect.left;
             const my = e.clientY - rect.top;
-            for (const r of regionsRef.current) {
-                if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
-                    r.action();
-                    paint();
-                    forceUpdate({});
-                    break;
-                }
+            for (let i = 0; i < regionsRef.current.length; i++) {
+                const r = regionsRef.current[i];
+                if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) return i;
+            }
+            return -1;
+        };
+        const onClick = (e: MouseEvent) => {
+            const idx = hitTest(e);
+            if (idx >= 0) { regionsRef.current[idx].action(); paint(); forceUpdate({}); }
+        };
+        const onMove = (e: MouseEvent) => {
+            const idx = hitTest(e);
+            canvas.style.cursor = idx >= 0 ? 'pointer' : '';
+            if (renderer.getHoveredRegion() !== idx) {
+                renderer.setHoveredRegion(idx);
+                paint();
+            }
+        };
+        const onLeave = () => {
+            if (renderer.getHoveredRegion() !== -1) {
+                renderer.setHoveredRegion(-1);
+                paint();
             }
         };
         canvas.addEventListener('click', onClick);
-        return () => canvas.removeEventListener('click', onClick);
+        canvas.addEventListener('mousemove', onMove);
+        canvas.addEventListener('mouseleave', onLeave);
+        return () => {
+            canvas.removeEventListener('click', onClick);
+            canvas.removeEventListener('mousemove', onMove);
+            canvas.removeEventListener('mouseleave', onLeave);
+        };
     }, [paint]);
 
     // Repaint on swap animation frames for array panes
@@ -117,6 +138,8 @@ export default function VisualizerCanvas() {
                 <div style={{ background: "#1a1a1a", borderBottom: "1px solid #333" }}>
                     <button
                         onClick={() => setPanelOpen(!panelOpen)}
+                        onMouseEnter={e => (e.currentTarget.style.color = '#ccc')}
+                        onMouseLeave={e => (e.currentTarget.style.color = '#888')}
                         style={{
                             padding: "4px 10px",
                             fontSize: 12,
@@ -126,6 +149,7 @@ export default function VisualizerCanvas() {
                             cursor: "pointer",
                             width: "100%",
                             textAlign: "left",
+                            transition: "color 0.15s",
                         }}
                     >
                         ⚙ Panels {panelOpen ? "▾" : "▸"}
@@ -138,6 +162,8 @@ export default function VisualizerCanvas() {
                                     <button
                                         key={key}
                                         onClick={() => engine.toggleChild(key)}
+                                        onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.3)'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.filter = ''; }}
                                         style={{
                                             padding: "2px 10px",
                                             fontSize: 12,
@@ -150,6 +176,7 @@ export default function VisualizerCanvas() {
                                             display: "flex",
                                             alignItems: "center",
                                             gap: 4,
+                                            transition: "filter 0.15s",
                                         }}
                                     >
                                         {dsType && (

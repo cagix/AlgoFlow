@@ -523,6 +523,7 @@ export class SimpleEngine {
             .filter((c: { key: string; title: string }) => {
                 const t = this.tracers[c.key];
                 if (!t || t.type === 'code' || t.type === 'recursion') return false;
+                if (t.type === 'array' && t.data?.length === 0) return false;
                 return true;
             });
     }
