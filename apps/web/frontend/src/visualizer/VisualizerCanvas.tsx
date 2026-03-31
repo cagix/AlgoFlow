@@ -2,46 +2,81 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { getEngine, subscribe } from "./visualizerEngine";
 
 function PaneResizeHandle() {
-    const [dragging, setDragging] = useState(false);
+    const handleRef = useRef<HTMLDivElement>(null);
+    const [active, setActive] = useState(false);
+
+    useEffect(() => {
+        const el = handleRef.current;
+        if (!el) return;
+        let dragging = false;
+
+        const onDown = (e: MouseEvent) => {
+            const prev = el.previousElementSibling as HTMLElement;
+            const next = el.nextElementSibling as HTMLElement;
+            if (!prev || !next) return;
+            e.preventDefault();
+            dragging = true;
+            setActive(true);
+            document.body.style.cursor = 'row-resize';
+            document.body.style.userSelect = 'none';
+            const startY = e.clientY;
+            const prevH = prev.offsetHeight;
+            const nextH = next.offsetHeight;
+
+            const onMove = (ev: MouseEvent) => {
+                if (!dragging) return;
+                const dy = ev.clientY - startY;
+                prev.style.maxHeight = Math.max(40, prevH + dy) + 'px';
+                next.style.maxHeight = Math.max(40, nextH - dy) + 'px';
+            };
+            const onUp = () => {
+                dragging = false;
+                setActive(false);
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+                window.removeEventListener('mousemove', onMove);
+                window.removeEventListener('mouseup', onUp);
+            };
+            window.addEventListener('mousemove', onMove);
+            window.addEventListener('mouseup', onUp);
+        };
+
+        const onDblClick = () => {
+            const prev = el.previousElementSibling as HTMLElement;
+            const next = el.nextElementSibling as HTMLElement;
+            if (prev) prev.style.maxHeight = '';
+            if (next) next.style.maxHeight = '';
+        };
+
+        el.addEventListener('mousedown', onDown);
+        el.addEventListener('dblclick', onDblClick);
+        return () => {
+            el.removeEventListener('mousedown', onDown);
+            el.removeEventListener('dblclick', onDblClick);
+        };
+    }, []);
+
     return (
         <div
+            ref={handleRef}
             style={{
-                height: 5,
-                cursor: "row-resize",
-                background: dragging ? "#555" : "#2a2a2a",
+                height: 7,
+                cursor: 'row-resize',
+                background: active ? '#555' : '#222',
                 flexShrink: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "background 0.15s",
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'background 0.1s',
             }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#444')}
-            onMouseLeave={e => { if (!dragging) e.currentTarget.style.background = '#2a2a2a'; }}
-            onMouseDown={e => {
-                setDragging(true);
-                const handle = e.currentTarget;
-                const prev = handle.previousElementSibling as HTMLElement;
-                const next = handle.nextElementSibling as HTMLElement;
-                if (!prev || !next) return;
-                const startY = e.clientY;
-                const prevH = prev.offsetHeight;
-                const nextH = next.offsetHeight;
-                const onMove = (ev: MouseEvent) => {
-                    const dy = ev.clientY - startY;
-                    prev.style.maxHeight = Math.max(40, prevH + dy) + 'px';
-                    next.style.maxHeight = Math.max(40, nextH - dy) + 'px';
-                };
-                const onUp = () => {
-                    setDragging(false);
-                    handle.style.background = '#2a2a2a';
-                    window.removeEventListener('mousemove', onMove);
-                    window.removeEventListener('mouseup', onUp);
-                };
-                window.addEventListener('mousemove', onMove);
-                window.addEventListener('mouseup', onUp);
-            }}
+            onMouseEnter={e => { if (!active) e.currentTarget.style.background = '#3a3a3a'; }}
+            onMouseLeave={e => { if (!active) e.currentTarget.style.background = '#222'; }}
         >
-            <div style={{ width: 30, height: 2, borderRadius: 1, background: '#555' }} />
+            <div style={{ display: 'flex', gap: 3 }}>
+                <div style={{ width: 4, height: 4, borderRadius: '50%', background: active ? '#aaa' : '#555' }} />
+                <div style={{ width: 4, height: 4, borderRadius: '50%', background: active ? '#aaa' : '#555' }} />
+                <div style={{ width: 4, height: 4, borderRadius: '50%', background: active ? '#aaa' : '#555' }} />
+            </div>
         </div>
     );
 }
