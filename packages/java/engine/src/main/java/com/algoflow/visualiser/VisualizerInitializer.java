@@ -1,5 +1,6 @@
 package com.algoflow.visualiser;
 
+import com.algoflow.annotation.Chart;
 import com.algoflow.annotation.Graph;
 import com.algoflow.annotation.Tree;
 
@@ -52,6 +53,17 @@ public class VisualizerInitializer {
 
     private static boolean registerField(Field field, Object value, Object instance) {
         String name = field.getName();
+
+        // Check for @Chart annotation
+        if (field.isAnnotationPresent(Chart.class)) {
+            if (value == null || !value.getClass().isArray()) {
+                System.err.println("[AlgoFlow] @Chart on '" + name + "': unsupported type. Supported: primitive arrays");
+                return false;
+            }
+            ChartVisualizer vis = new ChartVisualizer(value, name);
+            VisualizerRegistry.registerChart(vis, value);
+            return true;
+        }
 
         // Check for @Graph annotation first
         if (field.isAnnotationPresent(Graph.class)) {

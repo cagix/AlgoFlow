@@ -11,6 +11,7 @@ public class VisualizerRegistry {
     private static final List<Commander> _visualizers = new ArrayList<>();
     private static final Map<Object, ListVisualizer> _objectToVisualizer = new IdentityHashMap<>();
     private static final Map<Object, PrimitiveArray1DVisualizer> _arrayToVisualizer = new IdentityHashMap<>();
+    private static final Map<Object, ChartVisualizer> _chartToVisualizer = new IdentityHashMap<>();
     private static final Map<Object, PrimitiveArray2DVisualizer> _array2DToVisualizer = new IdentityHashMap<>();
     private static final Map<Object, GraphVisualizer> _graphToVisualizer = new IdentityHashMap<>();
     private static final List<TreeVisualizer> _treeVisualizers = new ArrayList<>();
@@ -22,6 +23,7 @@ public class VisualizerRegistry {
     public static boolean isRegistered(Object obj) {
         return _objectToVisualizer.containsKey(obj) || _arrayToVisualizer.containsKey(obj)
                 || _array2DToVisualizer.containsKey(obj) || _graphToVisualizer.containsKey(obj)
+                || _chartToVisualizer.containsKey(obj)
                 || _treeVisualizers.stream().anyMatch(t -> t.isTrackedNode(obj));
     }
 
@@ -54,6 +56,11 @@ public class VisualizerRegistry {
     public static void registerTree(TreeVisualizer visualizer) {
         _visualizers.add(visualizer.getCommander());
         _treeVisualizers.add(visualizer);
+    }
+
+    public static void registerChart(ChartVisualizer visualizer, Object arrayObj) {
+        _visualizers.add(visualizer.getCommander());
+        _chartToVisualizer.put(arrayObj, visualizer);
     }
 
     public static void registerGraph(GraphVisualizer visualizer, Object graphObj) {
@@ -253,6 +260,12 @@ public class VisualizerRegistry {
         PrimitiveArray1DVisualizer arrayVis = _arrayToVisualizer.get(array);
         if (arrayVis != null) {
             arrayVis.onGet(args);
+            return;
+        }
+
+        ChartVisualizer chartVis = _chartToVisualizer.get(array);
+        if (chartVis != null) {
+            chartVis.onGet(args);
         }
     }
 
@@ -313,6 +326,12 @@ public class VisualizerRegistry {
         PrimitiveArray1DVisualizer arrayVis = _arrayToVisualizer.get(array);
         if (arrayVis != null) {
             arrayVis.onSet(args);
+            return;
+        }
+
+        ChartVisualizer chartVis = _chartToVisualizer.get(array);
+        if (chartVis != null) {
+            chartVis.onSet(args);
         }
     }
 
