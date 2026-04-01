@@ -2,6 +2,7 @@ package com.algoflow.visualiser;
 
 import org.algorithm_visualizer.*;
 
+import java.lang.reflect.Array;
 import java.util.IdentityHashMap;
 import java.util.Map;
 
@@ -35,16 +36,10 @@ public class PrimitiveArray2DVisualizer implements Visualizer {
     }
 
     private int findRowIndex(Object rowArray) {
-        if (_array instanceof Object[][] arr) {
-            for (int i = 0; i < arr.length; i++) {
-                if (arr[i] == rowArray)
-                    return i;
-            }
-        } else if (_array instanceof int[][] arr) {
-            for (int i = 0; i < arr.length; i++) {
-                if (arr[i] == rowArray)
-                    return i;
-            }
+        if (!_array.getClass().isArray()) return -1;
+        int len = Array.getLength(_array);
+        for (int i = 0; i < len; i++) {
+            if (Array.get(_array, i) == rowArray) return i;
         }
         return -1;
     }
@@ -56,16 +51,20 @@ public class PrimitiveArray2DVisualizer implements Visualizer {
     }
 
     private Object[][] to2DBoxedArray(Object array) {
-        if (array instanceof int[][] arr) {
-            Object[][] result = new Object[arr.length][];
-            for (int i = 0; i < arr.length; i++) {
-                result[i] = java.util.Arrays.stream(arr[i]).boxed().toArray();
+        if (array instanceof Object[][]) return (Object[][]) array;
+        if (!array.getClass().isArray()) return new Object[0][0];
+        int rows = Array.getLength(array);
+        Object[][] result = new Object[rows][];
+        for (int i = 0; i < rows; i++) {
+            Object row = Array.get(array, i);
+            int cols = Array.getLength(row);
+            result[i] = new Object[cols];
+            for (int j = 0; j < cols; j++) {
+                Object v = Array.get(row, j);
+                result[i][j] = (v instanceof Character) ? String.valueOf(v) : v;
             }
-            return result;
-        } else if (array instanceof Object[][]) {
-            return (Object[][]) array;
         }
-        return new Object[0][0];
+        return result;
     }
 
     @Override
