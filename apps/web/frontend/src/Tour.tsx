@@ -10,9 +10,9 @@ interface Step {
 }
 
 const STEPS: Step[] = [
-    { target: "[data-tour='editor']", title: "Code Editor", body: "Write your Java code here. Arrays, graphs, and trees are auto-visualized.", position: "right" },
-    { target: "[data-tour='templates']", title: "Templates", body: "Quick-start templates for arrays, trees, graphs, and more.", position: "bottom" },
-    { target: "[data-tour='examples']", title: "Examples", body: "Pre-built algorithm examples — load one and hit Run to see it visualize.", position: "bottom" },
+    { target: "[data-tour='editor']", title: "Code Editor", body: "Write your code here. Arrays, graphs, and trees are auto-visualized.", position: "right" },
+    { target: "[data-tour='templates']", title: "Templates", body: "Quick-start templates for arrays, trees, graphs, and linked lists.", position: "bottom" },
+    { target: "[data-tour='examples']", title: "Examples", body: "Pre-built algorithms — load one and hit Run to see it in action.", position: "bottom" },
     { target: "[data-tour='run']", title: "Run", body: "Click Run or press ⌘/Ctrl+Enter to execute and visualize.", position: "top" },
     { target: "[data-tour='visualizer']", title: "Visualizer", body: "Your algorithm animates here — arrays, graphs, trees, and more.", position: "left" },
     { target: "[data-tour='controls']", title: "Playback Controls", body: "Play, pause, step through, scrub, and adjust speed.", position: "top" },
@@ -99,10 +99,10 @@ export default function Tour({ onFinish }: { onFinish: () => void }) {
                 position: "absolute",
                 left: rect.left - pad, top: rect.top - pad,
                 width: rect.width + pad * 2, height: rect.height + pad * 2,
-                border: "2px solid #4CAF50",
+                border: "2px solid var(--accent)",
                 borderRadius: 6,
                 pointerEvents: "none",
-                boxShadow: "0 0 0 4px rgba(76,175,80,0.2)",
+                boxShadow: "0 0 0 4px var(--accent-glow)",
             }} />
 
             {/* Tooltip with arrow */}
@@ -110,8 +110,8 @@ export default function Tour({ onFinish }: { onFinish: () => void }) {
                 position: "absolute",
                 left: tipX, top: tipY,
                 width: tipW,
-                background: "#1e1e1e",
-                border: "1px solid #4CAF50",
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--accent)",
                 borderRadius: 8,
                 padding: "14px 16px",
                 boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
@@ -123,38 +123,38 @@ export default function Tour({ onFinish }: { onFinish: () => void }) {
                     ...(s.position === "right" ? {
                         left: -8, top: "50%", transform: "translateY(-50%)",
                         borderTop: "8px solid transparent", borderBottom: "8px solid transparent",
-                        borderRight: "8px solid #4CAF50",
+                        borderRight: "8px solid var(--accent)",
                     } : s.position === "left" ? {
                         right: -8, top: "50%", transform: "translateY(-50%)",
                         borderTop: "8px solid transparent", borderBottom: "8px solid transparent",
-                        borderLeft: "8px solid #4CAF50",
+                        borderLeft: "8px solid var(--accent)",
                     } : s.position === "bottom" ? {
                         top: -8, left: "50%", transform: "translateX(-50%)",
                         borderLeft: "8px solid transparent", borderRight: "8px solid transparent",
-                        borderBottom: "8px solid #4CAF50",
+                        borderBottom: "8px solid var(--accent)",
                     } : {
                         bottom: -8, left: "50%", transform: "translateX(-50%)",
                         borderLeft: "8px solid transparent", borderRight: "8px solid transparent",
-                        borderTop: "8px solid #4CAF50",
+                        borderTop: "8px solid var(--accent)",
                     }),
                 }} />
-                <div style={{ color: "#4CAF50", fontSize: 13, fontWeight: 700, marginBottom: 6 }}>
+                <div style={{ color: "var(--accent)", fontSize: 13, fontWeight: 700, marginBottom: 6 }}>
                     {step + 1}/{activeSteps.length} — {s.title}
                 </div>
-                <div style={{ color: "#ccc", fontSize: 12, lineHeight: 1.5, marginBottom: 14 }}>
+                <div style={{ color: "var(--text-primary)", fontSize: 12, lineHeight: 1.5, marginBottom: 14 }}>
                     {s.body}
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <button
                         onClick={skip}
-                        style={{ background: "none", border: "none", color: "#666", fontSize: 11, cursor: "pointer", padding: 0 }}
+                        style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: 11, cursor: "pointer", padding: 0 }}
                     >
                         Skip tour
                     </button>
                     <button
                         onClick={next}
                         style={{
-                            background: "#4CAF50", color: "#fff", border: "none",
+                            background: "var(--accent)", color: "#fff", border: "none",
                             borderRadius: 4, padding: "5px 14px", fontSize: 12,
                             fontWeight: 600, cursor: "pointer",
                         }}

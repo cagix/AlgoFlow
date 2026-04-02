@@ -25,12 +25,12 @@ function PaneLabel({ child, collapsed, onToggle }: { child: any; collapsed: bool
         <div
             onClick={onToggle}
             style={{
-                padding: '3px 10px', fontSize: 11, color: '#777', background: '#1a1a1a',
-                borderBottom: '1px solid #222', display: 'flex', alignItems: 'center', gap: 5,
+                padding: '3px 10px', fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-surface)',
+                borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 5,
                 flexShrink: 0, userSelect: 'none', cursor: 'pointer',
             }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#aaa')}
-            onMouseLeave={e => (e.currentTarget.style.color = '#777')}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-secondary)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
         >
             <span style={{ fontSize: 8, opacity: 0.5 }}>{collapsed ? '▶' : '▼'}</span>
             <span style={{ opacity: 0.6 }}>{icon}</span>
@@ -100,20 +100,20 @@ function PaneResizeHandle() {
             style={{
                 height: 7,
                 cursor: 'row-resize',
-                background: active ? '#555' : '#222',
+                background: active ? 'var(--text-muted)' : 'var(--border)',
                 flexShrink: 0,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 transition: 'background 0.1s',
             }}
-            onMouseEnter={e => { if (!active) e.currentTarget.style.background = '#3a3a3a'; }}
-            onMouseLeave={e => { if (!active) e.currentTarget.style.background = '#222'; }}
+            onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--border-light)'; }}
+            onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'var(--border)'; }}
         >
             <div style={{ display: 'flex', gap: 3 }}>
-                <div style={{ width: 4, height: 4, borderRadius: '50%', background: active ? '#aaa' : '#555' }} />
-                <div style={{ width: 4, height: 4, borderRadius: '50%', background: active ? '#aaa' : '#555' }} />
-                <div style={{ width: 4, height: 4, borderRadius: '50%', background: active ? '#aaa' : '#555' }} />
+                <div style={{ width: 4, height: 4, borderRadius: '50%', background: active ? 'var(--text-secondary)' : 'var(--text-muted)' }} />
+                <div style={{ width: 4, height: 4, borderRadius: '50%', background: active ? 'var(--text-secondary)' : 'var(--text-muted)' }} />
+                <div style={{ width: 4, height: 4, borderRadius: '50%', background: active ? 'var(--text-secondary)' : 'var(--text-muted)' }} />
             </div>
         </div>
     );
@@ -258,18 +258,18 @@ function ChildPane({ child, renderer, autoScroll, hideTitle }: { child: any; ren
                 borderTop: "none",
             }}
         >
-            <canvas ref={canvasRef} style={{ display: "block", background: "#111" }} />
+            <canvas ref={canvasRef} style={{ display: "block", background: "var(--bg-surface)" }} />
             {tooltip && (
                 <div style={{
                     position: "absolute",
                     left: tooltip.x,
                     top: tooltip.y - 24,
-                    background: "#222",
+                    background: "var(--bg-hover)",
                     color: "#fff",
                     fontSize: 11,
                     padding: "2px 8px",
                     borderRadius: 4,
-                    border: "1px solid #555",
+                    border: "1px solid var(--text-muted)",
                     pointerEvents: "none",
                     whiteSpace: "nowrap",
                     zIndex: 10,
@@ -356,7 +356,7 @@ export default function VisualizerCanvas() {
     return (
         <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%" }}>
             {isLayout && grouped.length > 0 ? (
-                <div style={{ flex: 1, minHeight: 0, position: 'relative', background: '#111' }}>
+                <div style={{ flex: 1, minHeight: 0, position: 'relative', background: 'var(--bg-surface)' }}>
                     <div ref={scrollRef} style={{ height: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
                         {grouped.map((child: any, i: number) => {
                             const paneKey = child.title || child.type + i;
@@ -384,7 +384,7 @@ export default function VisualizerCanvas() {
                                 zIndex: 20,
                                 width: 32, height: 32, borderRadius: '50%',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                background: '#4CAF50',
+                                background: 'var(--accent)',
                                 color: '#fff', fontSize: 16,
                                 cursor: 'pointer',
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
@@ -397,7 +397,7 @@ export default function VisualizerCanvas() {
             ) : null}
             <div
                 ref={containerRef}
-                style={{ flex: 1, width: "100%", minHeight: 0, background: "#111", display: isLayout && grouped.length > 0 ? "none" : undefined }}
+                style={{ flex: 1, width: "100%", minHeight: 0, background: "var(--bg-surface)", display: isLayout && grouped.length > 0 ? "none" : undefined }}
             />
         </div>
     );

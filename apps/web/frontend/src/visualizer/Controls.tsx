@@ -64,23 +64,23 @@ export default function Controls() {
         getEngine().setCursor(Number(e.target.value));
     };
 
-    const trackColor = done ? '#888' : '#4CAF50';
+    const trackColor = done ? 'var(--text-secondary)' : 'var(--accent)';
 
     return (
-        <div data-tour="controls" style={{ background: "#1a1a1a", borderTop: "1px solid #333", padding: "8px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
+        <div data-tour="controls" style={{ background: "var(--bg-surface)", borderTop: "1px solid var(--border-light)", padding: "8px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
             <style>{`
-                .ctrl-btn { background: none; color: #999; border: none; padding: 4px 6px; cursor: pointer; font-size: 14px; transition: color 0.15s; display: flex; align-items: center; }
+                .ctrl-btn { background: none; color: var(--text-secondary); border: none; padding: 4px 6px; cursor: pointer; font-size: 14px; transition: color 0.15s; display: flex; align-items: center; }
                 .ctrl-btn:hover { color: #fff; }
-                .ctrl-btn:active { color: #4CAF50; }
+                .ctrl-btn:active { color: var(--accent); }
                 .ctrl-btn svg { width: 16px; height: 16px; fill: currentColor; }
                 .ctrl-btn.play-btn svg { width: 20px; height: 20px; }
                 .progress-track { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; border-radius: 2px; outline: none; cursor: pointer; margin: 0; }
-                .progress-track::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--track-color, #4CAF50) 0%, var(--track-color, #4CAF50) var(--pct), #333 var(--pct), #333 100%); }
-                .progress-track::-moz-range-track { height: 4px; border-radius: 2px; background: #333; }
-                .progress-track::-moz-range-progress { height: 4px; border-radius: 2px; background: #4CAF50; }
-                .progress-track::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 2px solid #4CAF50; margin-top: -4px; cursor: pointer; transition: transform 0.1s; }
+                .progress-track::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--track-color, var(--accent)) 0%, var(--track-color, var(--accent)) var(--pct), var(--border-light) var(--pct), var(--border-light) 100%); }
+                .progress-track::-moz-range-track { height: 4px; border-radius: 2px; background: var(--border-light); }
+                .progress-track::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--accent); }
+                .progress-track::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 2px solid var(--accent); margin-top: -4px; cursor: pointer; transition: transform 0.1s; }
                 .progress-track::-webkit-slider-thumb:hover { transform: scale(1.3); }
-                .progress-track::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 2px solid #4CAF50; cursor: pointer; }
+                .progress-track::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 2px solid var(--accent); cursor: pointer; }
             `}</style>
             {total > 0 && (
                 <input
@@ -111,11 +111,11 @@ export default function Controls() {
                         <svg viewBox="0 0 24 24"><polygon points="5,6 16,12 5,18"/><rect x="16.5" y="6" width="2.5" height="12" rx="1"/></svg>
                     </button>
                 </div>
-                <span style={{ color: done ? '#888' : '#666', fontSize: 12, fontFamily: "monospace" }}>
-                    {cursor}<span style={{ color: '#444' }}>/</span>{total}{done ? ' ✓' : ''}
+                <span style={{ color: done ? 'var(--text-secondary)' : 'var(--text-muted)', fontSize: 12, fontFamily: "monospace" }}>
+                    {cursor}<span style={{ color: 'var(--text-faint)' }}>/</span>{total}{done ? ' ✓' : ''}
                 </span>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ fontSize: 10, color: '#888', fontFamily: 'monospace', minWidth: 28, textAlign: 'right' }}>{speedMultiplier}</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontFamily: 'monospace', minWidth: 28, textAlign: 'right' }}>{speedMultiplier}</span>
                     <input
                         className="progress-track"
                         type="range"

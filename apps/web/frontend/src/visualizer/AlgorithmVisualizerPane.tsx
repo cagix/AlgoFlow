@@ -27,11 +27,11 @@ export default function AlgorithmVisualizerPane({ loading }: { loading?: boolean
                     `}</style>
                     <div style={{ textAlign: "center" }}>
                         <div style={{
-                            width: 28, height: 28, border: "3px solid #333",
-                            borderTopColor: "#4CAF50", borderRadius: "50%",
+                            width: 28, height: 28, border: "3px solid var(--border-light)",
+                            borderTopColor: "var(--accent)", borderRadius: "50%",
                             animation: "spin 0.8s linear infinite", margin: "0 auto 10px",
                         }} />
-                        <div style={{ color: "#888", fontSize: 12 }}>Executing…</div>
+                        <div style={{ color: "var(--text-secondary)", fontSize: 12 }}>Executing…</div>
                     </div>
                 </div>
             )}

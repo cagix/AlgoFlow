@@ -1,3 +1,5 @@
+import { theme } from "../../constants/theme";
+
 interface SwapAnimation {
     tracerKey: string;
     i: number;
@@ -38,7 +40,7 @@ export class SimpleRenderer {
         this.canvas = document.createElement('canvas');
         this.canvas.style.width = '100%';
         this.canvas.style.display = 'block';
-        this.canvas.style.background = '#111';
+        this.canvas.style.background = theme.bg.surface;
         container.appendChild(this.canvas);
         
         this.ctx = this.canvas.getContext('2d');
@@ -242,23 +244,23 @@ export class SimpleRenderer {
             const cx = width / 2, cy = height / 2;
 
             // Play icon in circle
-            this.ctx.fillStyle = '#2a2a2a';
+            this.ctx.fillStyle = theme.bg.active;
             this.ctx.beginPath();
             this.ctx.arc(cx, cy - 40, 32, 0, Math.PI * 2);
             this.ctx.fill();
-            this.ctx.fillStyle = '#4CAF50';
+            this.ctx.fillStyle = theme.accent.default;
             this.ctx.font = '28px sans-serif';
             this.ctx.fillText('▶', cx + 2, cy - 38);
 
-            this.ctx.fillStyle = '#aaa';
+            this.ctx.fillStyle = theme.text.secondary;
             this.ctx.font = 'bold 15px sans-serif';
-            this.ctx.fillText('Write Java · Run · Visualize', cx, cy + 16);
+            this.ctx.fillText('Write Code · Run · Visualize', cx, cy + 16);
 
-            this.ctx.fillStyle = '#555';
+            this.ctx.fillStyle = theme.text.muted;
             this.ctx.font = '12px sans-serif';
             this.ctx.fillText('Arrays, graphs, and trees animate automatically', cx, cy + 40);
 
-            this.ctx.fillStyle = '#444';
+            this.ctx.fillStyle = theme.text.faint;
             this.ctx.font = '11px sans-serif';
             const isMac = typeof navigator !== 'undefined' && navigator.platform?.includes('Mac');
             this.ctx.fillText(`${isMac ? '⌘' : 'Ctrl'}+Enter = run · Space = play/pause · ← → = step`, cx, cy + 62);
@@ -344,14 +346,14 @@ export class SimpleRenderer {
         let y = 30;
         
         if (title) {
-            this.ctx.fillStyle = isError ? '#f44336' : '#aaa';
+            this.ctx.fillStyle = isError ? theme.status.error : theme.text.secondary;
             this.ctx.font = isError ? 'bold 16px sans-serif' : '14px sans-serif';
             this.ctx.textAlign = 'left';
             this.ctx.fillText(isError ? '⚠ Error' : title, 20, y);
             y += isError ? 30 : 25;
         }
         
-        this.ctx.fillStyle = isError ? '#ff8a80' : '#fff';
+        this.ctx.fillStyle = isError ? theme.status.errorLight : '#fff';
         this.ctx.font = '14px monospace';
         
         logs.forEach(log => {
@@ -493,7 +495,7 @@ export class SimpleRenderer {
             this.ctx!.restore();
             
             if (i < grouped.length - 1) {
-                this.ctx!.strokeStyle = '#444';
+                this.ctx!.strokeStyle = theme.text.faint;
                 this.ctx!.beginPath();
                 this.ctx!.moveTo(0, yOffset);
                 this.ctx!.lineTo(width, yOffset);
@@ -528,23 +530,23 @@ export class SimpleRenderer {
             const startX = cx - totalW / 2;
 
             // badge
-            this.ctx.fillStyle = '#2a4a3a';
+            this.ctx.fillStyle = theme.accent.dark;
             this.ctx.beginPath();
             this.ctx.roundRect(startX, cy - badgeH / 2 - 1, badgeW, badgeH, 3);
             this.ctx.fill();
-            this.ctx.fillStyle = '#4CAF50';
+            this.ctx.fillStyle = theme.accent.default;
             this.ctx.font = badgeFont;
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
             this.ctx.fillText(badgeText, startX + badgeW / 2, cy);
 
             // name
-            this.ctx.fillStyle = '#aaa';
+            this.ctx.fillStyle = theme.text.secondary;
             this.ctx.font = nameFont;
             this.ctx.textAlign = 'left';
             this.ctx.fillText(title, startX + badgeW + 6, cy);
         } else {
-            this.ctx.fillStyle = '#aaa';
+            this.ctx.fillStyle = theme.text.secondary;
             this.ctx.font = `${fontSize}px sans-serif`;
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
@@ -593,7 +595,7 @@ export class SimpleRenderer {
             const bx = offsetX + i * (barW + gap) + swapOffset;
             const by = chartY + chartH - barH;
 
-            const target = (isSwapping || patched) ? '#f44336' : (selected ? '#2196F3' : '#4CAF50');
+            const target = (isSwapping || patched) ? theme.status.error : (selected ? theme.status.info : theme.accent.default);
             this.ctx.fillStyle = this.transitionColor(`chart-${i}`, target);
             this.ctx.beginPath();
             this.ctx.roundRect(bx, by, barW, barH, Math.min(3, barW / 2));
@@ -637,13 +639,13 @@ export class SimpleRenderer {
                 offsetX = i === anim.i ? t * dist : -t * dist;
             }
             const cx = startX + i * cellWidth + offsetX;
-            const targetColor = (isSwapping || patched) ? '#f44336' : (selected ? '#2196F3' : '#333333');
+            const targetColor = (isSwapping || patched) ? theme.status.error : (selected ? theme.status.info : theme.cell.default);
             const cellColor = this.transitionColor(`arr-${i}`, targetColor);
-            if (patched) { this.ctx!.shadowColor = '#f44336'; this.ctx!.shadowBlur = 10; }
+            if (patched) { this.ctx!.shadowColor = theme.status.error; this.ctx!.shadowBlur = 10; }
             this.ctx!.fillStyle = cellColor;
             this.ctx!.fillRect(cx + 2, startY, cellWidth - 4, cellHeight);
             this.ctx!.shadowColor = 'transparent'; this.ctx!.shadowBlur = 0;
-            this.ctx!.strokeStyle = '#666';
+            this.ctx!.strokeStyle = theme.text.muted;
             this.ctx!.strokeRect(cx + 2, startY, cellWidth - 4, cellHeight);
             this.ctx!.fillStyle = '#fff';
             this.ctx!.font = valFont;
@@ -651,7 +653,7 @@ export class SimpleRenderer {
             this.ctx!.textBaseline = 'middle';
             this.ctx!.fillText(String(value), cx + cellWidth / 2, startY + cellHeight / 2);
             this.tooltipRegions.push({ x: cx + 2, y: startY, w: cellWidth - 4, h: cellHeight, text: `[${i}] = ${value}` });
-            this.ctx!.fillStyle = '#888';
+            this.ctx!.fillStyle = theme.text.secondary;
             this.ctx!.font = `${large ? 12 : 10}px monospace`;
             this.ctx!.fillText(String(i), startX + i * cellWidth + cellWidth / 2, startY + cellHeight + (large ? 20 : 15));
         });
@@ -662,7 +664,7 @@ export class SimpleRenderer {
         const cy = y + height / 2;
         if (!arr.length) {
             if (title) this.drawTitleWithBadge(title, dsType, x + width / 2, cy - 10, 12);
-            this.ctx.fillStyle = '#666';
+            this.ctx.fillStyle = theme.text.muted;
             this.ctx.font = '12px monospace';
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
@@ -682,11 +684,11 @@ export class SimpleRenderer {
             const patched = typeof item === 'object' ? item.patched : false;
             const nx = startX + i * (nodeW + arrowW);
 
-            this.ctx!.fillStyle = patched ? '#f44336' : (selected ? '#2196F3' : '#333');
+            this.ctx!.fillStyle = patched ? theme.status.error : (selected ? theme.status.info : theme.cell.default);
             this.ctx!.beginPath();
             this.ctx!.roundRect(nx, cy - nodeH / 2, nodeW, nodeH, 6);
             this.ctx!.fill();
-            this.ctx!.strokeStyle = '#666';
+            this.ctx!.strokeStyle = theme.text.muted;
             this.ctx!.beginPath();
             this.ctx!.roundRect(nx, cy - nodeH / 2, nodeW, nodeH, 6);
             this.ctx!.stroke();
@@ -700,14 +702,14 @@ export class SimpleRenderer {
 
             if (i < arr.length - 1) {
                 const ax = nx + nodeW + 2, ax2 = ax + arrowW - 4;
-                this.ctx!.strokeStyle = '#888';
+                this.ctx!.strokeStyle = theme.text.secondary;
                 this.ctx!.lineWidth = 1.5;
                 // Forward arrow →
                 this.ctx!.beginPath();
                 this.ctx!.moveTo(ax, cy - 3);
                 this.ctx!.lineTo(ax2, cy - 3);
                 this.ctx!.stroke();
-                this.ctx!.fillStyle = '#888';
+                this.ctx!.fillStyle = theme.text.secondary;
                 this.ctx!.beginPath();
                 this.ctx!.moveTo(ax2, cy - 3);
                 this.ctx!.lineTo(ax2 - 5, cy - 7);
@@ -732,13 +734,13 @@ export class SimpleRenderer {
         // null terminator
         const lastNx = startX + (arr.length - 1) * (nodeW + arrowW);
         const ax = lastNx + nodeW + 2, ax2 = ax + arrowW - 4;
-        this.ctx.strokeStyle = '#555';
+        this.ctx.strokeStyle = theme.text.muted;
         this.ctx.lineWidth = 1.5;
         this.ctx.beginPath();
         this.ctx.moveTo(ax, cy);
         this.ctx.lineTo(ax2, cy);
         this.ctx.stroke();
-        this.ctx.fillStyle = '#666';
+        this.ctx.fillStyle = theme.text.muted;
         this.ctx.font = '11px monospace';
         this.ctx.textAlign = 'left';
         this.ctx.textBaseline = 'middle';
@@ -751,7 +753,7 @@ export class SimpleRenderer {
         if (!arr.length) {
             const cy = y + height / 2;
             if (title) this.drawTitleWithBadge(title, dsType, x + width / 2, cy - 10, 12);
-            this.ctx.fillStyle = '#666';
+            this.ctx.fillStyle = theme.text.muted;
             this.ctx.font = '12px monospace';
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
@@ -774,10 +776,10 @@ export class SimpleRenderer {
             const patched = typeof item === 'object' ? item.patched : false;
             const cx = startX + i * cellWidth;
 
-            const stackTarget = patched ? '#f44336' : (selected ? '#2196F3' : '#333333');
+            const stackTarget = patched ? theme.status.error : (selected ? theme.status.info : theme.cell.default);
             this.ctx!.fillStyle = this.transitionColor(`stack-${i}`, stackTarget);
             this.ctx!.fillRect(cx + 2, startY, cellWidth - 4, cellHeight);
-            this.ctx!.strokeStyle = '#666';
+            this.ctx!.strokeStyle = theme.text.muted;
             this.ctx!.strokeRect(cx + 2, startY, cellWidth - 4, cellHeight);
 
             this.ctx!.fillStyle = '#fff';
@@ -788,7 +790,7 @@ export class SimpleRenderer {
             this.tooltipRegions.push({ x: cx + 2, y: startY, w: cellWidth - 4, h: cellHeight, text: `[${i}] = ${value}` });
 
             if (i === topIdx) {
-                this.ctx!.fillStyle = '#4CAF50';
+                this.ctx!.fillStyle = theme.accent.default;
                 this.ctx!.font = 'bold 9px sans-serif';
                 this.ctx!.textAlign = 'center';
                 this.ctx!.fillText('TOP', cx + cellWidth / 2, startY + cellHeight + 13);
@@ -851,7 +853,7 @@ export class SimpleRenderer {
         } else if (child?.type === 'variablesGroup') {
             this.renderVariablesGroupInBounds(child.items, 0, 0, width);
         } else {
-            this.ctx.fillStyle = '#444';
+            this.ctx.fillStyle = theme.text.faint;
             this.ctx.font = '12px sans-serif';
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
@@ -895,7 +897,7 @@ export class SimpleRenderer {
         let ly = y + (_title ? 18 : 8);
 
         if (_title) {
-            this.ctx.fillStyle = '#aaa';
+            this.ctx.fillStyle = theme.text.secondary;
             this.ctx.font = '12px sans-serif';
             this.ctx.textAlign = 'left';
             this.ctx.fillText('Call Stack & Locals', x + 10, ly);
@@ -919,17 +921,17 @@ export class SimpleRenderer {
             // Bar background
             const regionIdx = this.clickRegions.length;
             const hovered = !isTop && this.hoveredRegionIdx === regionIdx;
-            this.ctx.fillStyle = returning ? '#b71c1c' : (isTop ? '#2E7D32' : (hovered ? '#444' : '#333'));
+            this.ctx.fillStyle = returning ? theme.status.errorDark : (isTop ? theme.accent.explored : (hovered ? theme.text.faint : theme.cell.default));
             this.ctx.beginPath();
             this.ctx.roundRect(barX, ly, barW, barH, 4);
             this.ctx.fill();
-            this.ctx.strokeStyle = returning ? '#f44336' : (isTop ? '#4CAF50' : (hovered ? '#888' : '#555'));
+            this.ctx.strokeStyle = returning ? theme.status.error : (isTop ? theme.accent.default : (hovered ? theme.text.secondary : theme.text.muted));
             this.ctx.beginPath();
             this.ctx.roundRect(barX, ly, barW, barH, 4);
             this.ctx.stroke();
 
             // Frame name
-            this.ctx.fillStyle = isTop ? '#fff' : '#ccc';
+            this.ctx.fillStyle = isTop ? '#fff' : theme.text.primary;
             this.ctx.font = 'bold 11px sans-serif';
             this.ctx.textAlign = 'left';
             this.ctx.textBaseline = 'middle';
@@ -958,10 +960,10 @@ export class SimpleRenderer {
                     const chipW = tw + 10;
                     const patched = patchedRows?.has(v.rowIdx);
                     if (patched) {
-                        this.ctx.shadowColor = '#f44336';
+                        this.ctx.shadowColor = theme.status.error;
                         this.ctx.shadowBlur = 8;
                     }
-                    this.ctx.fillStyle = patched ? '#f44336' : 'rgba(0,0,0,0.35)';
+                    this.ctx.fillStyle = patched ? theme.status.error : 'rgba(0,0,0,0.35)';
                     this.ctx.beginPath();
                     this.ctx.roundRect(cx, chipY - 7, chipW, 16, 3);
                     this.ctx.fill();
@@ -971,7 +973,7 @@ export class SimpleRenderer {
                     this.ctx.beginPath();
                     this.ctx.roundRect(cx, chipY - 7, chipW, 16, 3);
                     this.ctx.stroke();
-                    this.ctx.fillStyle = patched ? '#fff' : '#fff';
+                    this.ctx.fillStyle = '#fff';
                     this.ctx.font = '10px monospace';
                     this.ctx.textAlign = 'left';
                     this.ctx.textBaseline = 'middle';
@@ -991,14 +993,14 @@ export class SimpleRenderer {
         const wrapW = (maxWidth || 400) - 20;
         
         if (title) {
-            this.ctx.fillStyle = isError ? '#f44336' : '#aaa';
+            this.ctx.fillStyle = isError ? theme.status.error : theme.text.secondary;
             this.ctx.font = isError ? 'bold 14px sans-serif' : '12px sans-serif';
             this.ctx.textAlign = 'left';
             this.ctx.fillText(isError ? '⚠ Error' : title, x + 10, ly);
             ly += isError ? 24 : 20;
         }
         
-        this.ctx.fillStyle = isError ? '#ff8a80' : '#fff';
+        this.ctx.fillStyle = isError ? theme.status.errorLight : '#fff';
         this.ctx.font = '12px monospace';
         
         logs.forEach(log => {
@@ -1034,7 +1036,7 @@ export class SimpleRenderer {
         const startY = y + titleH + (height - titleH - gridH) / 2;
 
         if (title) {
-            this.ctx.fillStyle = '#aaa';
+            this.ctx.fillStyle = theme.text.secondary;
             this.ctx.font = '12px sans-serif';
             this.ctx.textAlign = 'center';
             this.ctx.fillText(title, x + width / 2, y + 16);
@@ -1052,10 +1054,10 @@ export class SimpleRenderer {
                 const cx = startX + colIdx * cellSize;
                 const cy = startY + rowIdx * cellSize;
 
-                this.ctx!.fillStyle = patched ? '#f44336' : (selected ? '#2196F3' : '#2a2a2a');
+                this.ctx!.fillStyle = patched ? theme.status.error : (selected ? theme.status.info : theme.bg.active);
                 this.ctx!.fillRect(cx, cy, cellSize, cellSize);
 
-                this.ctx!.strokeStyle = '#444';
+                this.ctx!.strokeStyle = theme.text.faint;
                 this.ctx!.lineWidth = 1;
                 this.ctx!.strokeRect(cx, cy, cellSize, cellSize);
 
@@ -1153,7 +1155,7 @@ export class SimpleRenderer {
                     const w = adjMatrix[i]?.[j] || adjMatrix[j]?.[i];
                     if (!w) continue;
                     const visited = edgeSet.has(`${i}-${j}`);
-                    const edgeTarget = visited ? '#4CAF50' : '#555555';
+                    const edgeTarget = visited ? theme.accent.default : theme.edge.default;
                     this.ctx.strokeStyle = this.transitionColor(`edge-${i}-${j}`, edgeTarget);
                     this.ctx.lineWidth = visited ? 2.5 : 1;
                     this.ctx.beginPath();
@@ -1161,7 +1163,7 @@ export class SimpleRenderer {
                     this.ctx.lineTo(pos[j].x, pos[j].y);
                     this.ctx.stroke();
                     if (weighted && w !== 1) {
-                        this.ctx.fillStyle = '#ffab40';
+                        this.ctx.fillStyle = theme.status.weight;
                         this.ctx.font = '10px sans-serif';
                         this.ctx.textAlign = 'center';
                         this.ctx.textBaseline = 'middle';
@@ -1179,10 +1181,10 @@ export class SimpleRenderer {
 
             this.ctx.beginPath();
             this.ctx.arc(pos[i].x, pos[i].y, nr, 0, Math.PI * 2);
-            const nodeTarget = nodes[i].state === 'active' ? '#4CAF50' : nodes[i].state === 'explored' ? '#2E7D32' : '#333333';
+            const nodeTarget = nodes[i].state === 'active' ? theme.accent.default : nodes[i].state === 'explored' ? theme.accent.explored : theme.cell.default;
             this.ctx.fillStyle = this.transitionColor(`node-${i}`, nodeTarget);
             this.ctx.fill();
-            this.ctx.strokeStyle = '#888';
+            this.ctx.strokeStyle = theme.text.secondary;
             this.ctx.stroke();
 
             this.ctx.fillStyle = '#fff';
@@ -1289,7 +1291,7 @@ export class SimpleRenderer {
         const sx = from.x + ux * nr, sy = from.y + uy * nr;
         const ex = to.x - ux * nr, ey = to.y - uy * nr;
 
-        this.ctx.strokeStyle = visited ? '#4CAF50' : '#555';
+        this.ctx.strokeStyle = visited ? theme.accent.default : theme.text.muted;
         this.ctx.lineWidth = visited ? 2.5 : 1;
 
         const bulge = curve * 20;
@@ -1321,7 +1323,7 @@ export class SimpleRenderer {
         if (alen === 0) return;
         ax /= alen; ay /= alen;
         const arrowLen = 8;
-        this.ctx.fillStyle = visited ? '#4CAF50' : '#555';
+        this.ctx.fillStyle = visited ? theme.accent.default : theme.text.muted;
         this.ctx.beginPath();
         this.ctx.moveTo(ex, ey);
         this.ctx.lineTo(ex - arrowLen * ax + arrowLen * 0.4 * (-ay), ey - arrowLen * ay + arrowLen * 0.4 * ax);
@@ -1333,7 +1335,7 @@ export class SimpleRenderer {
         if (weight && weight !== 1) {
             const lx = curve !== 0 ? cpx : (sx + ex) / 2;
             const ly = (curve !== 0 ? cpy : (sy + ey) / 2) - 8;
-            this.ctx.fillStyle = '#ffab40';
+            this.ctx.fillStyle = theme.status.weight;
             this.ctx.font = '10px sans-serif';
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
@@ -1350,7 +1352,7 @@ export class SimpleRenderer {
         let y = 30;
         
         if (title) {
-            this.ctx.fillStyle = '#aaa';
+            this.ctx.fillStyle = theme.text.secondary;
             this.ctx.font = '14px sans-serif';
             this.ctx.textAlign = 'left';
             this.ctx.fillText(title, 20, y);
@@ -1362,10 +1364,10 @@ export class SimpleRenderer {
             const x = 20 + indent;
             const barWidth = width - x - 20;
             
-            this.ctx!.fillStyle = call.patched ? '#f44336' : (call.active ? '#4CAF50' : '#666');
+            this.ctx!.fillStyle = call.patched ? theme.status.error : (call.active ? theme.accent.default : theme.text.muted);
             this.ctx!.fillRect(x, y - 15, barWidth, 25);
             
-            this.ctx!.strokeStyle = '#888';
+            this.ctx!.strokeStyle = theme.text.secondary;
             this.ctx!.strokeRect(x, y - 15, barWidth, 25);
             
             this.ctx!.fillStyle = '#fff';
@@ -1389,7 +1391,7 @@ export class SimpleRenderer {
         let y = 30;
         
         if (title) {
-            this.ctx.fillStyle = '#aaa';
+            this.ctx.fillStyle = theme.text.secondary;
             this.ctx.font = '14px sans-serif';
             this.ctx.textAlign = 'left';
             this.ctx.fillText(title, 20, y);
@@ -1405,7 +1407,7 @@ export class SimpleRenderer {
         let ly = y + 20;
         
         if (title) {
-            this.ctx.fillStyle = '#aaa';
+            this.ctx.fillStyle = theme.text.secondary;
             this.ctx.font = '12px sans-serif';
             this.ctx.textAlign = 'left';
             this.ctx.fillText(title, x + 10, ly);
@@ -1417,10 +1419,10 @@ export class SimpleRenderer {
             const cx = x + 10 + indent;
             const cw = width - indent - 20;
             
-            this.ctx!.fillStyle = call.patched ? '#f44336' : (call.active ? '#4CAF50' : '#666');
+            this.ctx!.fillStyle = call.patched ? theme.status.error : (call.active ? theme.accent.default : theme.text.muted);
             this.ctx!.fillRect(cx, ly - 12, cw, 20);
             
-            this.ctx!.strokeStyle = '#888';
+            this.ctx!.strokeStyle = theme.text.secondary;
             this.ctx!.strokeRect(cx, ly - 12, cw, 20);
             
             this.ctx!.fillStyle = '#fff';
@@ -1441,7 +1443,7 @@ export class SimpleRenderer {
         let ly = y + 20;
         
         if (title) {
-            this.ctx.fillStyle = '#aaa';
+            this.ctx.fillStyle = theme.text.secondary;
             this.ctx.font = '12px sans-serif';
             this.ctx.textAlign = 'left';
             this.ctx.fillText(title, x + 10, ly);
@@ -1457,7 +1459,7 @@ export class SimpleRenderer {
         let ly = y + 18;
         const hasTitle = items.some((item: any) => item.title);
         if (hasTitle) {
-            this.ctx.fillStyle = '#aaa';
+            this.ctx.fillStyle = theme.text.secondary;
             this.ctx.font = '12px sans-serif';
             this.ctx.textAlign = 'left';
             this.ctx.fillText('Local Variables', x + 10, ly);
@@ -1472,7 +1474,7 @@ export class SimpleRenderer {
         const chipsX = x + 18 + maxLabelW;
         
         items.forEach((item: any, idx: number) => {
-            this.ctx!.fillStyle = '#777';
+            this.ctx!.fillStyle = theme.text.muted;
             this.ctx!.font = '11px sans-serif';
             this.ctx!.textAlign = 'left';
             this.ctx!.textBaseline = 'middle';
@@ -1502,15 +1504,15 @@ export class SimpleRenderer {
             
             const isPatched = patchState?.[name]?.patched;
             if (isPatched) {
-                this.ctx!.shadowColor = '#f44336';
+                this.ctx!.shadowColor = theme.status.error;
                 this.ctx!.shadowBlur = 8;
             }
-            const chipTarget = isPatched ? '#f44336' : '#333333';
+            const chipTarget = isPatched ? theme.status.error : theme.cell.default;
             this.ctx!.fillStyle = this.transitionColor(`var-${name}`, chipTarget);
             this.ctx!.fillRect(cx, y - 12, chipW, chipH);
             this.ctx!.shadowColor = 'transparent';
             this.ctx!.shadowBlur = 0;
-            this.ctx!.strokeStyle = '#666';
+            this.ctx!.strokeStyle = theme.text.muted;
             this.ctx!.strokeRect(cx, y - 12, chipW, chipH);
             
             this.ctx!.fillStyle = '#fff';
