@@ -102,7 +102,8 @@ public class ExecutionController {
             
             if (runExitCode != 0) {
                 log.error("Java execution failed: {}", runStderr);
-                throw new RuntimeException(runStderr.isBlank() ? runOutput : runStderr);
+                String userError = extractUserError(runStderr);
+                throw new RuntimeException(userError.isBlank() ? runOutput : userError);
             }
             
             Path jsonFile = tempDir.resolve("visualization.json");
@@ -139,6 +140,15 @@ public class ExecutionController {
             throw new IllegalArgumentException("No public class found in code");
         }
         return m.group(1);
+    }
+
+    private String extractUserError(String stderr) {
+        return stderr.lines()
+                .filter(line -> !line.startsWith("[Byte Buddy]"))
+                .filter(line -> !line.startsWith("[VisualizerAgent]"))
+                .filter(line -> !line.startsWith("OpenJDK"))
+                .filter(line -> !line.startsWith("WARNING:"))
+                .reduce("", (a, b) -> a.isEmpty() ? b : a + "\n" + b);
     }
 
     private String normalizeToRunnerPackage(String code) {

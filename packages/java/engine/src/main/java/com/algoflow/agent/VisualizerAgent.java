@@ -27,7 +27,7 @@ public class VisualizerAgent {
     public static void premain(String args, Instrumentation inst) throws IOException, NoSuchFieldException,
             IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException {
 
-        System.out.println("[VisualizerAgent] Starting agent...");
+        System.err.println("[VisualizerAgent] Starting agent...");
         File temp = Files.createTempDirectory("temp").toFile();
 
         // 1. INJECT into Bootstrap
@@ -109,16 +109,14 @@ public class VisualizerAgent {
         containsListenerField.set(null, onContains);
 
         new AgentBuilder.Default().disableClassFormatChanges().with(RETRANSFORMATION)
-                // Make sure we see helpful logs
                 .with(AgentBuilder.RedefinitionStrategy.Listener.StreamWriting.toSystemError())
                 .with(AgentBuilder.Listener.StreamWriting.toSystemError().withTransformationsOnly())
                 .with(AgentBuilder.InstallationListener.StreamWriting.toSystemError())
-                // Ignore Byte Buddy and JDK classes we are not interested in
                 .ignore(nameStartsWith("net.bytebuddy.").or(nameStartsWith("jdk.internal.reflect."))
                         .or(nameStartsWith("java.lang.invoke.")).or(nameStartsWith("com.sun.proxy.")))
                 .with(AgentBuilder.InitializationStrategy.NoOp.INSTANCE).type(nameStartsWith("com.algoflow.runner"))
                 .transform((builder, type, classLoader, module, protectionDomain) -> {
-                    System.out.println("[VisualizerAgent] Transforming: " + type.getName());
+                    System.err.println("[VisualizerAgent] Transforming: " + type.getName());
                     return builder.visit(Advice.to(ConstructorInterceptor.class).on(isConstructor()))
                             .visit(Advice.to(StaticInitInterceptor.class).on(isTypeInitializer()))
                             .visit(Advice.to(RecursionInterceptor.EnterInterceptor.class)
@@ -131,7 +129,6 @@ public class VisualizerAgent {
                 .type(ElementMatchers.is(java.util.ArrayList.class).or(ElementMatchers.is(LinkedList.class))
                         .or(ElementMatchers.is(java.util.Stack.class)))
                 .transform((builder, type, classLoader, module, protectionDomain) -> {
-                    System.out.println("[VisualizerAgent] Transforming: " + type.getName());
                     return builder
                             .visit(Advice.to(ListInterceptor.GetInterceptor.class)
                                     .on(named("get").and(takesArguments(int.class))))
@@ -156,7 +153,6 @@ public class VisualizerAgent {
                         .or(ElementMatchers.is(java.util.LinkedHashSet.class))
                         .or(ElementMatchers.is(java.util.TreeSet.class)))
                 .transform((builder, type, classLoader, module, protectionDomain) -> {
-                    System.out.println("[VisualizerAgent] Transforming: " + type.getName());
                     return builder
                             .visit(Advice.to(CollectionInterceptor.AddInterceptor.class)
                                     .on(named("add").or(named("offer")).or(named("push"))
@@ -172,7 +168,6 @@ public class VisualizerAgent {
                                     .on(named("contains").and(takesArguments(Object.class))));
                 }).type(ElementMatchers.is(java.io.PrintStream.class))
                 .transform((builder, type, classLoader, module, protectionDomain) -> {
-                    System.out.println("[VisualizerAgent] Transforming PrintStream");
                     return builder
                             .visit(Advice.to(PrintStreamInterceptor.PrintlnInterceptor.class)
                                     .on(named("writeln").and(takesArguments(String.class))))
@@ -180,7 +175,6 @@ public class VisualizerAgent {
                                     .on(named("write").and(takesArguments(String.class))));
                 }).type(ElementMatchers.isSubTypeOf(java.util.Iterator.class).and(nameStartsWith("java.util.")))
                 .transform((builder, type, classLoader, module, protectionDomain) -> {
-                    System.out.println("[VisualizerAgent] Transforming Iterator: " + type.getName());
                     return builder.visit(Advice.to(IteratorInterceptor.NextInterceptor.class)
                             .on(named("next").and(takesArguments(0))));
                 })
@@ -192,7 +186,6 @@ public class VisualizerAgent {
                         .or(ElementMatchers.is(java.util.LinkedHashSet.class))
                         .or(ElementMatchers.is(java.util.TreeSet.class)))
                 .transform((builder, type, classLoader, module, protectionDomain) -> {
-                    System.out.println("[VisualizerAgent] Transforming iterator() on: " + type.getName());
                     return builder.visit(Advice.to(IteratorInterceptor.CreatedInterceptor.class)
                             .on(named("iterator").and(takesArguments(0))));
                 })
@@ -200,7 +193,6 @@ public class VisualizerAgent {
                         .or(ElementMatchers.is(java.util.LinkedHashMap.class))
                         .or(ElementMatchers.is(java.util.TreeMap.class)))
                 .transform((builder, type, classLoader, module, protectionDomain) -> {
-                    System.out.println("[VisualizerAgent] Transforming Map: " + type.getName());
                     return builder
                             .visit(Advice.to(MapInterceptor.PutEnterInterceptor.class)
                                     .on(named("put").and(takesArguments(Object.class, Object.class))))
@@ -216,6 +208,6 @@ public class VisualizerAgent {
                                     .on(named("containsKey").and(takesArguments(Object.class))));
                 }).installOn(inst);
 
-        System.out.println("[VisualizerAgent] Agent installed");
+        System.err.println("[VisualizerAgent] Agent installed");
     }
 }
