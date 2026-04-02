@@ -31,6 +31,7 @@ export class SimpleRenderer {
     private hoveredRegionIdx: number = -1;
     private transitions: Map<string, ColorTransition> = new Map();
     private childTransitions: Map<string, ColorTransition> = new Map();
+    private hashMapLayouts: Map<string, 'horizontal' | 'vertical'> = new Map();
 
     private static readonly SWAP_DURATION = 400;
     private static readonly TRANSITION_DURATION = 200;
@@ -108,7 +109,9 @@ export class SimpleRenderer {
         this.scheduleTransitionLoop();
     }
 
-    private parseRGBA(color: string): [number, number, number, number] {
+    clearHashMapLayouts() {
+        this.hashMapLayouts.clear();
+    }    private parseRGBA(color: string): [number, number, number, number] {
         if (color.startsWith('#')) {
             const hex = color.slice(1);
             const r = parseInt(hex.substring(0, 2), 16);
@@ -274,6 +277,8 @@ export class SimpleRenderer {
             this.renderArray(this.data.data, this.data.title, this.data.dsType);
         } else if (this.data.type === 'array2d') {
             this.renderArray2D(this.data.data, this.data.title);
+        } else if (this.data.type === 'hashmap') {
+            this.renderHashMap(this.data.data, this.data.title);
         } else if (this.data.type === 'log') {
             this.renderLog(this.data.logs, this.data.title);
         } else if (this.data.type === 'recursion') {
@@ -394,6 +399,13 @@ export class SimpleRenderer {
             return Math.max(paneH, Math.round(nat.h * scale));
         }
         if (child?.type === 'array2d' && child.data) return Math.max(120, 30 + child.data.length * 40);
+        if (child?.type === 'hashmap' && child.data) {
+            const n = child.data[0]?.length || 1;
+            const layoutKey = child.title || '_default_map';
+            const layout = this.hashMapLayouts.get(layoutKey);
+            if (layout === 'vertical') return Math.max(120, 30 + n * 31);
+            return Math.max(120, 30 + 80);
+        }
         if (child?.type === 'variables' && child.vars) return Math.max(60, 45 + 28);
         if (child?.type === 'locals' && child.rows) {
             const rows = child.maxRows || child.rows.length;
@@ -415,6 +427,10 @@ export class SimpleRenderer {
         if (child?.type === 'array2d' && child.data) {
             const cols = child.data[0]?.length || 1;
             return cols * 40 + 40;
+        }
+        if (child?.type === 'hashmap' && child.data) {
+            const cols = child.data[0]?.length || 1;
+            return cols * 70 + 40;
         }
         if (child?.type === 'graph') {
             const nat = this.graphNaturalSize(child);
@@ -480,6 +496,8 @@ export class SimpleRenderer {
                 this.renderLocalsInBounds(child.rows, child.patchedRows, child.title, 0, 0, width, child.callStack);
             } else if (child?.type === 'array2d' && child.data) {
                 this.renderArray2DInBounds(child.data, child.title, 0, 0, width, sectionHeight);
+            } else if (child?.type === 'hashmap' && child.data) {
+                this.renderHashMapInBounds(child.data, child.title, 0, 0, width, sectionHeight);
             } else if (child?.type === 'log' && child.logs) {
                 this.renderLogInBounds(child.logs, child.title, 0, 0, width);
             } else if (child?.type === 'recursion' && child.calls) {
@@ -842,6 +860,8 @@ export class SimpleRenderer {
             this.renderLocalsInBounds(child.rows, child.patchedRows, child.title, 0, 0, width, child.callStack);
         } else if (child?.type === 'array2d' && child.data) {
             this.renderArray2DInBounds(child.data, child.title, 0, 0, width, height);
+        } else if (child?.type === 'hashmap' && child.data) {
+            this.renderHashMapInBounds(child.data, child.title, 0, 0, width, height);
         } else if (child?.type === 'log' && child.logs) {
             this.renderLogInBounds(child.logs, child.title, 0, 0, width);
         } else if (child?.type === 'recursion' && child.calls) {
@@ -1070,6 +1090,176 @@ export class SimpleRenderer {
             });
         });
 
+    }
+
+    private renderHashMap(rows: any[][], title?: string) {
+        if (!this.ctx || !this.canvas) return;
+        const dpr = window.devicePixelRatio || 1;
+        const width = this.canvas.width / dpr;
+        const height = this.canvas.height / dpr;
+        this.renderHashMapInBounds(rows, title, 0, 0, width, height);
+    }
+
+    private isHashMapVertical(rows: any[][], width: number): boolean {
+        if (!this.ctx || rows.length < 2) return false;
+        const n = rows[0]?.length || 0;
+        this.ctx.font = '12px monospace';
+        let maxValW = 0;
+        for (let i = 0; i < n; i++) {
+            const v = typeof rows[1][i] === 'object' ? rows[1][i].value : rows[1][i];
+            maxValW = Math.max(maxValW, this.ctx.measureText(String(v)).width);
+        }
+        const horizCellW = Math.min(70, Math.max(50, (width - 40) / n));
+        return maxValW > horizCellW - 16 || n > 10;
+    }
+
+    private renderHashMapInBounds(rows: any[][], title: string | undefined, x: number, y: number, width: number, height: number) {
+        if (!this.ctx || !rows.length || rows.length < 2) return;
+
+        const keys = rows[0];
+        const values = rows[1];
+        const n = keys.length;
+        if (n === 0) return;
+
+        const titleH = title ? 25 : 0;
+        if (title) this.drawTitleWithBadge(title, 'Map', x + width / 2, y + 14, 12);
+
+        const layoutKey = title || '_default_map';
+        let layout = this.hashMapLayouts.get(layoutKey);
+        if (!layout) {
+            layout = this.isHashMapVertical(rows, width) ? 'vertical' : 'horizontal';
+            this.hashMapLayouts.set(layoutKey, layout);
+        }
+
+        if (layout === 'vertical') {
+            this.renderHashMapVertical(keys, values, n, x, y + titleH, width, height - titleH);
+        } else {
+            this.renderHashMapHorizontal(keys, values, n, x, y + titleH, width, height - titleH);
+        }
+    }
+
+    private renderHashMapHorizontal(keys: any[], values: any[], n: number, x: number, y: number, width: number, height: number) {
+        const cellW = Math.min(70, Math.max(50, (width - 40) / n));
+        const cellH = 32;
+        const gap = 6;
+        const totalW = n * cellW + (n - 1) * gap;
+        const startX = x + (width - totalW) / 2;
+        const startY = y + (height - cellH * 2 - 12) / 2;
+
+        for (let i = 0; i < n; i++) {
+            const { kVal, vVal, selected, patched } = this.extractMapEntry(keys[i], values[i]);
+            const cx = startX + i * (cellW + gap);
+            const keyTarget = patched ? theme.status.error : (selected ? theme.status.info : theme.bg.elevated);
+            const valTarget = patched ? theme.status.error : (selected ? theme.status.info : theme.cell.default);
+            const borderTarget = patched ? theme.status.error : (selected ? theme.status.info : theme.border.light);
+
+            this.applyMapGlow(selected, patched);
+            this.ctx!.fillStyle = this.transitionColor(`map-k-${i}`, keyTarget);
+            this.ctx!.beginPath();
+            this.ctx!.roundRect(cx, startY, cellW, cellH, [4, 4, 0, 0]);
+            this.ctx!.fill();
+            this.ctx!.strokeStyle = borderTarget;
+            this.ctx!.lineWidth = 1;
+            this.ctx!.stroke();
+            this.ctx!.shadowColor = 'transparent'; this.ctx!.shadowBlur = 0;
+
+            this.ctx!.fillStyle = '#fff';
+            this.ctx!.font = '12px monospace';
+            this.ctx!.textAlign = 'center';
+            this.ctx!.textBaseline = 'middle';
+            this.ctx!.fillText(this.truncateText(String(kVal), cellW - 8), cx + cellW / 2, startY + cellH / 2);
+
+            this.applyMapGlow(selected, patched);
+            this.ctx!.fillStyle = this.transitionColor(`map-v-${i}`, valTarget);
+            this.ctx!.beginPath();
+            this.ctx!.roundRect(cx, startY + cellH, cellW, cellH, [0, 0, 4, 4]);
+            this.ctx!.fill();
+            this.ctx!.strokeStyle = borderTarget;
+            this.ctx!.lineWidth = 1;
+            this.ctx!.stroke();
+            this.ctx!.shadowColor = 'transparent'; this.ctx!.shadowBlur = 0;
+
+            this.ctx!.fillStyle = '#fff';
+            this.ctx!.font = 'bold 13px monospace';
+            this.ctx!.textAlign = 'center';
+            this.ctx!.textBaseline = 'middle';
+            this.ctx!.fillText(this.truncateText(String(vVal), cellW - 8), cx + cellW / 2, startY + cellH + cellH / 2);
+
+            this.tooltipRegions.push({ x: cx, y: startY, w: cellW, h: cellH * 2, text: `${kVal} \u2192 ${vVal}` });
+        }
+    }
+
+    private renderHashMapVertical(keys: any[], values: any[], n: number, x: number, y: number, width: number, height: number) {
+        const rowH = 28;
+        const gap = 3;
+        const pad = 20;
+        const keyW = Math.min(100, (width - pad * 2) * 0.3);
+        const valW = width - pad * 2 - keyW - 8;
+        const totalH = n * rowH + (n - 1) * gap;
+        const startX = x + pad;
+        const startY = y + (height - totalH) / 2;
+
+        for (let i = 0; i < n; i++) {
+            const { kVal, vVal, selected, patched } = this.extractMapEntry(keys[i], values[i]);
+            const ry = startY + i * (rowH + gap);
+            const keyTarget = patched ? theme.status.error : (selected ? theme.status.info : theme.bg.elevated);
+            const valTarget = patched ? theme.status.error : (selected ? theme.status.info : theme.cell.default);
+            const borderTarget = patched ? theme.status.error : (selected ? theme.status.info : theme.border.light);
+
+            this.applyMapGlow(selected, patched);
+            this.ctx!.fillStyle = this.transitionColor(`map-k-${i}`, keyTarget);
+            this.ctx!.beginPath();
+            this.ctx!.roundRect(startX, ry, keyW, rowH, [4, 0, 0, 4]);
+            this.ctx!.fill();
+            this.ctx!.strokeStyle = borderTarget;
+            this.ctx!.lineWidth = 1;
+            this.ctx!.stroke();
+            this.ctx!.shadowColor = 'transparent'; this.ctx!.shadowBlur = 0;
+
+            this.ctx!.fillStyle = '#fff';
+            this.ctx!.font = '12px monospace';
+            this.ctx!.textAlign = 'center';
+            this.ctx!.textBaseline = 'middle';
+            this.ctx!.fillText(this.truncateText(String(kVal), keyW - 10), startX + keyW / 2, ry + rowH / 2);
+
+            this.applyMapGlow(selected, patched);
+            this.ctx!.fillStyle = this.transitionColor(`map-v-${i}`, valTarget);
+            this.ctx!.beginPath();
+            this.ctx!.roundRect(startX + keyW + 4, ry, valW, rowH, [0, 4, 4, 0]);
+            this.ctx!.fill();
+            this.ctx!.strokeStyle = borderTarget;
+            this.ctx!.lineWidth = 1;
+            this.ctx!.stroke();
+            this.ctx!.shadowColor = 'transparent'; this.ctx!.shadowBlur = 0;
+
+            // Arrow between key and value
+            this.ctx!.fillStyle = theme.text.faint;
+            this.ctx!.font = '10px sans-serif';
+            this.ctx!.textAlign = 'center';
+            this.ctx!.fillText('\u2192', startX + keyW + 2, ry + rowH / 2);
+
+            this.ctx!.fillStyle = '#fff';
+            this.ctx!.font = 'bold 12px monospace';
+            this.ctx!.textAlign = 'left';
+            this.ctx!.textBaseline = 'middle';
+            this.ctx!.fillText(this.truncateText(String(vVal), valW - 12), startX + keyW + 10, ry + rowH / 2);
+
+            this.tooltipRegions.push({ x: startX, y: ry, w: keyW + 4 + valW, h: rowH, text: `${kVal} \u2192 ${vVal}` });
+        }
+    }
+
+    private extractMapEntry(kItem: any, vItem: any) {
+        return {
+            kVal: typeof kItem === 'object' ? kItem.value : kItem,
+            vVal: typeof vItem === 'object' ? vItem.value : vItem,
+            selected: (typeof kItem === 'object' && kItem.selected) || (typeof vItem === 'object' && vItem.selected),
+            patched: (typeof kItem === 'object' && kItem.patched) || (typeof vItem === 'object' && vItem.patched),
+        };
+    }
+
+    private applyMapGlow(selected: boolean, patched: boolean) {
+        if (patched) { this.ctx!.shadowColor = theme.status.error; this.ctx!.shadowBlur = 10; }
+        else if (selected) { this.ctx!.shadowColor = theme.status.info; this.ctx!.shadowBlur = 8; }
     }
 
     private renderGraphInBounds(adjMatrix: number[][], nodes: any[], title: string | undefined, x: number, y: number, width: number, height: number, visitedEdges?: string[], directed?: boolean, weighted?: boolean, nodeLabels?: string[], layout?: string, edges?: [number, number][], treeDims?: { maxLeaves: number; maxDepth: number }) {

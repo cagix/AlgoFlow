@@ -14,6 +14,7 @@ public class VisualizerRegistry {
     private static final Map<Object, ChartVisualizer> _chartToVisualizer = new IdentityHashMap<>();
     private static final Map<Object, PrimitiveArray2DVisualizer> _array2DToVisualizer = new IdentityHashMap<>();
     private static final Map<Object, GraphVisualizer> _graphToVisualizer = new IdentityHashMap<>();
+    private static final Map<Object, HashMapVisualizer> _mapToVisualizer = new IdentityHashMap<>();
     private static final List<TreeVisualizer> _treeVisualizers = new ArrayList<>();
     private static LogVisualizer _logVisualizer;
     private static LocalVariablesVisualizer _localVariablesVisualizer;
@@ -23,7 +24,7 @@ public class VisualizerRegistry {
     public static boolean isRegistered(Object obj) {
         return _objectToVisualizer.containsKey(obj) || _arrayToVisualizer.containsKey(obj)
                 || _array2DToVisualizer.containsKey(obj) || _graphToVisualizer.containsKey(obj)
-                || _chartToVisualizer.containsKey(obj)
+                || _chartToVisualizer.containsKey(obj) || _mapToVisualizer.containsKey(obj)
                 || _treeVisualizers.stream().anyMatch(t -> t.isTrackedNode(obj));
     }
 
@@ -66,6 +67,11 @@ public class VisualizerRegistry {
     public static void registerGraph(GraphVisualizer visualizer, Object graphObj) {
         _visualizers.add(visualizer.getCommander());
         _graphToVisualizer.put(graphObj, visualizer);
+    }
+
+    public static void registerMap(HashMapVisualizer visualizer, Object mapObj) {
+        _visualizers.add(visualizer.getCommander());
+        _mapToVisualizer.put(mapObj, visualizer);
     }
 
     public static void autoRegisterCodeVisualizer() {
@@ -445,6 +451,54 @@ public class VisualizerRegistry {
                 vis.onGet(new Object[]{idx[0]});
                 idx[0]++;
             }
+        } finally {
+            _processing = false;
+        }
+    }
+
+    public static void onMapPut(Object map, Object[] args) {
+        if (_processing) return;
+        _processing = true;
+        try {
+            highlightLine(getCallerLineNumber());
+            HashMapVisualizer vis = _mapToVisualizer.get(map);
+            if (vis != null) vis.onPut(args[0], args[1]);
+        } finally {
+            _processing = false;
+        }
+    }
+
+    public static void onMapGet(Object map, Object[] args) {
+        if (_processing) return;
+        _processing = true;
+        try {
+            highlightLine(getCallerLineNumber());
+            HashMapVisualizer vis = _mapToVisualizer.get(map);
+            if (vis != null) vis.onGet(args[0]);
+        } finally {
+            _processing = false;
+        }
+    }
+
+    public static void onMapRemove(Object map, Object[] args) {
+        if (_processing) return;
+        _processing = true;
+        try {
+            highlightLine(getCallerLineNumber());
+            HashMapVisualizer vis = _mapToVisualizer.get(map);
+            if (vis != null) vis.onRemove(args[0], (String) args[1]);
+        } finally {
+            _processing = false;
+        }
+    }
+
+    public static void onMapClear(Object map) {
+        if (_processing) return;
+        _processing = true;
+        try {
+            highlightLine(getCallerLineNumber());
+            HashMapVisualizer vis = _mapToVisualizer.get(map);
+            if (vis != null) vis.onClear();
         } finally {
             _processing = false;
         }

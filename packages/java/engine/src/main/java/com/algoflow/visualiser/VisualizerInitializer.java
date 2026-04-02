@@ -117,7 +117,11 @@ public class VisualizerInitializer {
     }
 
     private static boolean registerValue(String name, Object value, boolean is2DList) {
-        if (value instanceof List<?> list) {
+        if (value instanceof java.util.Map<?, ?> map) {
+            HashMapVisualizer vis = new HashMapVisualizer(map, "Map: " + name);
+            VisualizerRegistry.registerMap(vis, map);
+            return true;
+        } else if (value instanceof List<?> list) {
             ListVisualizer vis = is2DList ? new Array2DVisualiser(list, name) : new Array1DVisualiser(list, typedName(name, value));
             VisualizerRegistry.register(vis, list);
             return true;

@@ -86,6 +86,23 @@ public class VisualizerAgent {
         iteratorCreatedListenerField.setAccessible(true);
         iteratorCreatedListenerField.set(null, onIteratorCreated);
 
+        BiConsumer<Object, Object[]> onMapPut = VisualizerRegistry::onMapPut;
+        BiConsumer<Object, Object[]> onMapGet = VisualizerRegistry::onMapGet;
+        BiConsumer<Object, Object[]> onMapRemove = VisualizerRegistry::onMapRemove;
+        Consumer<Object> onMapClear = VisualizerRegistry::onMapClear;
+
+        for (String fieldName : new String[]{"mapPutListener", "mapGetListener", "mapRemoveListener", "mapClearListener"}) {
+            Field f = bootBridge.getField(fieldName);
+            f.setAccessible(true);
+            f.set(null, switch (fieldName) {
+                case "mapPutListener" -> onMapPut;
+                case "mapGetListener" -> onMapGet;
+                case "mapRemoveListener" -> onMapRemove;
+                case "mapClearListener" -> onMapClear;
+                default -> throw new IllegalStateException();
+            });
+        }
+
         new AgentBuilder.Default().disableClassFormatChanges().with(RETRANSFORMATION)
                 // Make sure we see helpful logs
                 .with(AgentBuilder.RedefinitionStrategy.Listener.StreamWriting.toSystemError())
@@ -163,6 +180,21 @@ public class VisualizerAgent {
                     System.out.println("[VisualizerAgent] Transforming iterator() on: " + type.getName());
                     return builder.visit(Advice.to(IteratorInterceptor.CreatedInterceptor.class)
                             .on(named("iterator").and(takesArguments(0))));
+                })
+                .type(ElementMatchers.is(java.util.HashMap.class)
+                        .or(ElementMatchers.is(java.util.LinkedHashMap.class))
+                        .or(ElementMatchers.is(java.util.TreeMap.class)))
+                .transform((builder, type, classLoader, module, protectionDomain) -> {
+                    System.out.println("[VisualizerAgent] Transforming Map: " + type.getName());
+                    return builder
+                            .visit(Advice.to(MapInterceptor.PutInterceptor.class)
+                                    .on(named("put").and(takesArguments(Object.class, Object.class))))
+                            .visit(Advice.to(MapInterceptor.GetInterceptor.class)
+                                    .on(named("get").and(takesArguments(Object.class))))
+                            .visit(Advice.to(MapInterceptor.RemoveInterceptor.class)
+                                    .on(named("remove").and(takesArguments(Object.class))))
+                            .visit(Advice.to(MapInterceptor.ClearInterceptor.class)
+                                    .on(named("clear").and(takesArguments(0))));
                 }).installOn(inst);
 
         System.out.println("[VisualizerAgent] Agent installed");

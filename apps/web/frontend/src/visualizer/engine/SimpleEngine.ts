@@ -12,7 +12,7 @@ export class SimpleEngine {
     private batching = false;
     private activeChildKey: string | null = null;
     private static readonly TYPE_PRIORITY: Record<string, number> = {
-        graph: 10, array: 9, array2d: 9, log: 5, variables: 3, locals: 1, recursion: 0,
+        graph: 10, array: 9, array2d: 9, hashmap: 9, log: 5, variables: 3, locals: 1, recursion: 0,
     };
 
     constructor() {
@@ -134,6 +134,7 @@ export class SimpleEngine {
         this.tracers = {};
         this.root = null;
         this.highlightedLine = null;
+        this.renderer.clearHashMapLayouts();
         this.renderer.setData(null);
     }
 
@@ -180,6 +181,9 @@ export class SimpleEngine {
                 this.tracers[key] = { type: 'locals', rows: [], patchedRows: new Set<number>(), title: args[0] };
             } else if (title.toLowerCase().includes('variable') || title.toLowerCase().includes('local')) {
                 this.tracers[key] = { type: 'variables', vars: {}, title: args[0] };
+            } else if (title.toLowerCase().startsWith('map: ') || title.toLowerCase().startsWith('map:')) {
+                const mapTitle = title.replace(/^map:\s*/i, '');
+                this.tracers[key] = { type: 'hashmap', data: [], title: mapTitle };
             } else {
                 this.tracers[key] = { type: 'array2d', data: [], title: args[0] };
             }
@@ -199,6 +203,15 @@ export class SimpleEngine {
                 const rawData = args[0];
                 const unwrapped = (rawData.length === 1 && Array.isArray(rawData[0]) && Array.isArray(rawData[0][0])) 
                     ? rawData[0] 
+                    : rawData;
+                this.tracers[key].data = unwrapped.map((row: any[]) =>
+                    row.map((v: any) => ({ value: v, selected: false, patched: false }))
+                );
+                this.updateRenderer();
+            } else if (this.tracers[key]?.type === 'hashmap') {
+                const rawData = args[0];
+                const unwrapped = (rawData.length === 1 && Array.isArray(rawData[0]) && Array.isArray(rawData[0][0]))
+                    ? rawData[0]
                     : rawData;
                 this.tracers[key].data = unwrapped.map((row: any[]) =>
                     row.map((v: any) => ({ value: v, selected: false, patched: false }))
@@ -422,6 +435,10 @@ export class SimpleEngine {
                 this.tracers[key].data[args[0]][args[1]].selected = true;
                 this.tracers[key].data[args[0]][args[1]].patched = false;
                 this.updateRenderer();
+            } else if (this.tracers[key]?.type === 'hashmap' && this.tracers[key]?.data?.[args[0]]?.[args[1]]) {
+                this.tracers[key].data[args[0]][args[1]].selected = true;
+                this.tracers[key].data[args[0]][args[1]].patched = false;
+                this.updateRenderer();
             } else if (this.tracers[key]?.type === 'recursion' && this.tracers[key]?.calls?.[args[0]]) {
                 this.tracers[key].calls[args[0]].active = true;
                 this.updateRenderer();
@@ -431,6 +448,9 @@ export class SimpleEngine {
                 this.tracers[key].data[args[0]].selected = false;
                 this.updateRenderer();
             } else if (this.tracers[key]?.type === 'array2d' && this.tracers[key]?.data?.[args[0]]?.[args[1]]) {
+                this.tracers[key].data[args[0]][args[1]].selected = false;
+                this.updateRenderer();
+            } else if (this.tracers[key]?.type === 'hashmap' && this.tracers[key]?.data?.[args[0]]?.[args[1]]) {
                 this.tracers[key].data[args[0]][args[1]].selected = false;
                 this.updateRenderer();
             } else if (this.tracers[key]?.type === 'recursion' && this.tracers[key]?.calls?.[args[0]]) {
@@ -444,6 +464,11 @@ export class SimpleEngine {
                 this.tracers[key].data[args[0]].selected = false;
                 this.updateRenderer();
             } else if (this.tracers[key]?.type === 'array2d' && this.tracers[key]?.data?.[args[0]]?.[args[1]]) {
+                this.tracers[key].data[args[0]][args[1]].value = args[2];
+                this.tracers[key].data[args[0]][args[1]].patched = true;
+                this.tracers[key].data[args[0]][args[1]].selected = false;
+                this.updateRenderer();
+            } else if (this.tracers[key]?.type === 'hashmap' && this.tracers[key]?.data?.[args[0]]?.[args[1]]) {
                 this.tracers[key].data[args[0]][args[1]].value = args[2];
                 this.tracers[key].data[args[0]][args[1]].patched = true;
                 this.tracers[key].data[args[0]][args[1]].selected = false;
@@ -474,6 +499,9 @@ export class SimpleEngine {
                 this.tracers[key].data[args[0]].patched = false;
                 this.updateRenderer();
             } else if (this.tracers[key]?.type === 'array2d' && this.tracers[key]?.data?.[args[0]]?.[args[1]]) {
+                this.tracers[key].data[args[0]][args[1]].patched = false;
+                this.updateRenderer();
+            } else if (this.tracers[key]?.type === 'hashmap' && this.tracers[key]?.data?.[args[0]]?.[args[1]]) {
                 this.tracers[key].data[args[0]][args[1]].patched = false;
                 this.updateRenderer();
             } else if (this.tracers[key]?.type === 'recursion' && this.tracers[key]?.calls?.[args[0]]) {
@@ -507,6 +535,8 @@ export class SimpleEngine {
                 this.renderer.setData({ type: 'array', data: tracer.data, title: tracer.title, dsType: tracer.dsType });
             } else if (tracer.type === 'array2d') {
                 this.renderer.setData({ type: 'array2d', data: tracer.data, title: tracer.title });
+            } else if (tracer.type === 'hashmap') {
+                this.renderer.setData({ type: 'hashmap', data: tracer.data, title: tracer.title });
             } else if (tracer.type === 'log') {
                 this.renderer.setData({ type: 'log', logs: tracer.logs, title: tracer.title });
             } else if (tracer.type === 'recursion') {
@@ -658,6 +688,7 @@ export class SimpleEngine {
                 if (!dsType && t?.type === 'graph') dsType = t.layout === 'tree' ? 'Tree' : 'Graph';
                 if (!dsType && t?.type === 'chart') dsType = 'Chart';
                 if (!dsType && t?.type === 'locals') dsType = 'Call Stack';
+                if (!dsType && t?.type === 'hashmap') dsType = 'Map';
                 return { key: k, title: t?.title || k, dsType };
             })
             .filter((c: { key: string; title: string }) => {
