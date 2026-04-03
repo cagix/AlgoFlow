@@ -22,7 +22,7 @@ public class ProblemService {
     public record ProblemData(
         int id, String title, String difficulty, String category,
         String description, List<String> examples, String leetcodeUrl,
-        String starterCode
+        String starterCode, String starterCodePython
     ) {}
 
     @PostConstruct
@@ -39,6 +39,7 @@ public class ProblemService {
                     String basePath = yamlRes.getURI().toString();
                     basePath = basePath.substring(0, basePath.lastIndexOf('/') + 1);
                     String starterCode = loadSibling(resolver, basePath, "starter.java");
+                    String starterCodePython = loadSibling(resolver, basePath, "starter.py");
 
                     int id = (int) map.get("id");
                     @SuppressWarnings("unchecked")
@@ -52,7 +53,8 @@ public class ProblemService {
                         ((String) map.get("description")).trim(),
                         examples,
                         (String) map.get("leetcodeUrl"),
-                        starterCode
+                        starterCode,
+                        starterCodePython
                     ));
                     log.info("Loaded problem {}: {}", id, map.get("title"));
                 } catch (Exception e) {

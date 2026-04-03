@@ -1,6 +1,13 @@
 export interface Lesson {
     code: string;
     annotations: Record<number, string>; // step -> note text
+    language?: 'java' | 'python';
+}
+
+export function detectLanguage(code: string): 'java' | 'python' {
+    if (/^\s*(public\s+class|package\s|import\s+java\.)/.test(code)) return 'java';
+    if (/^\s*(def |import |from |class \w+:)/m.test(code)) return 'python';
+    return 'java';
 }
 
 const PKG_RE = /^package\s+[\w.]+;\s*\n?/;

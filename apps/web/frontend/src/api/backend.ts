@@ -9,6 +9,7 @@ export interface Problem {
     examples: string[];
     leetcodeUrl: string;
     starterCode: string;
+    starterCodePython?: string;
 }
 
 let problemsCache: Problem[] | null = null;

@@ -1059,6 +1059,66 @@ print("fib(10) =", memo[10])
 `,
     },
     {
+        name: "Quick Sort",
+        category: "Sorting",
+        code: `arr = [5, 3, 8, 1, 9, 2, 7]
+
+def quick_sort(a, lo, hi):
+    if lo < hi:
+        p = partition(a, lo, hi)
+        quick_sort(a, lo, p - 1)
+        quick_sort(a, p + 1, hi)
+
+def partition(a, lo, hi):
+    pivot = a[lo]
+    i, j = lo + 1, hi
+    while True:
+        while i <= j and a[i] <= pivot:
+            i += 1
+        while i <= j and a[j] > pivot:
+            j -= 1
+        if i >= j:
+            break
+        a[i], a[j] = a[j], a[i]
+    a[lo], a[j] = a[j], a[lo]
+    return j
+
+quick_sort(arr, 0, len(arr) - 1)
+`,
+    },
+    {
+        name: "Merge Sort",
+        category: "Sorting",
+        code: `arr = [5, 3, 8, 1, 9, 2, 7]
+temp = [0] * len(arr)
+
+def merge_sort(a, t, start, end):
+    if start >= end:
+        return
+    mid = (start + end) // 2
+    merge_sort(a, t, start, mid)
+    merge_sort(a, t, mid + 1, end)
+    merge(a, t, start, mid, end)
+
+def merge(a, t, start, mid, end):
+    i, j, k = start, mid + 1, start
+    while i <= mid and j <= end:
+        if a[i] <= a[j]:
+            t[k] = a[i]; i += 1
+        else:
+            t[k] = a[j]; j += 1
+        k += 1
+    while i <= mid:
+        t[k] = a[i]; i += 1; k += 1
+    while j <= end:
+        t[k] = a[j]; j += 1; k += 1
+    for x in range(start, end + 1):
+        a[x] = t[x]
+
+merge_sort(arr, temp, 0, len(arr) - 1)
+`,
+    },
+    {
         name: "Two Sum",
         category: "Hash Maps",
         code: `nums = [2, 7, 11, 15]
@@ -1073,6 +1133,283 @@ def two_sum(nums, target):
         seen[nums[i]] = i
 
 two_sum(nums, 9)
+`,
+    },
+    {
+        name: "BFS",
+        category: "Graphs",
+        code: `from collections import deque
+
+graph = {
+    0: [1, 2],
+    1: [0, 3, 4],
+    2: [0, 4],
+    3: [1, 5],
+    4: [1, 2, 5],
+    5: [3, 4],
+}
+
+def bfs(start):
+    visited = set()
+    queue = deque([start])
+    visited.add(start)
+    while queue:
+        current = queue.popleft()
+        for neighbor in graph[current]:
+            if neighbor not in visited:
+                visited.add(neighbor)
+                queue.append(neighbor)
+
+bfs(0)
+`,
+    },
+    {
+        name: "DFS",
+        category: "Graphs",
+        code: `adj_matrix = [
+    [0, 1, 1, 0, 0, 0],
+    [1, 0, 0, 1, 1, 0],
+    [1, 0, 0, 0, 1, 0],
+    [0, 1, 0, 0, 0, 1],
+    [0, 1, 1, 0, 0, 1],
+    [0, 0, 0, 1, 1, 0],
+]
+visited = [False] * 6
+
+def dfs(node):
+    visited[node] = True
+    for neighbor in range(len(adj_matrix)):
+        if adj_matrix[node][neighbor] == 1 and not visited[neighbor]:
+            dfs(neighbor)
+
+dfs(0)
+`,
+    },
+    {
+        name: "Dijkstra's Shortest Path",
+        category: "Graphs",
+        code: `import heapq
+
+adj_matrix = [
+    [0, 4, 2, 0, 0, 0],
+    [0, 0, 8, 0, 0, 0],
+    [0, 0, 0, 7, 0, 2],
+    [0, 0, 0, 0, 9, 0],
+    [0, 0, 0, 0, 0, 10],
+    [0, 0, 0, 0, 3, 0],
+]
+
+def dijkstra(src):
+    n = len(adj_matrix)
+    dist = [float('inf')] * n
+    dist[src] = 0
+    visited = [False] * n
+    for _ in range(n):
+        u = -1
+        for v in range(n):
+            if not visited[v] and (u == -1 or dist[v] < dist[u]):
+                u = v
+        visited[u] = True
+        for v in range(n):
+            if adj_matrix[u][v] > 0 and dist[u] + adj_matrix[u][v] < dist[v]:
+                dist[v] = dist[u] + adj_matrix[u][v]
+
+dijkstra(0)
+`,
+    },
+    {
+        name: "Topological Sort (DFS)",
+        category: "Graphs",
+        code: `adj_matrix = [
+    [0, 1, 1, 0, 0, 0],
+    [0, 0, 0, 1, 0, 0],
+    [0, 0, 0, 1, 1, 0],
+    [0, 0, 0, 0, 0, 1],
+    [0, 0, 0, 0, 0, 1],
+    [0, 0, 0, 0, 0, 0],
+]
+visited = [False] * 6
+stack = []
+
+def topo_sort():
+    for i in range(len(adj_matrix)):
+        if not visited[i]:
+            dfs(i)
+    print(stack[::-1])
+
+def dfs(node):
+    visited[node] = True
+    for i in range(len(adj_matrix)):
+        if adj_matrix[node][i] == 1 and not visited[i]:
+            dfs(i)
+    stack.append(node)
+
+topo_sort()
+`,
+    },
+    {
+        name: "BST Inorder Traversal",
+        category: "Trees",
+        code: `class TreeNode:
+    def __init__(self, val):
+        self.val = val
+        self.left = None
+        self.right = None
+
+root = TreeNode(4)
+root.left = TreeNode(2)
+root.right = TreeNode(6)
+root.left.left = TreeNode(1)
+root.left.right = TreeNode(3)
+root.right.left = TreeNode(5)
+root.right.right = TreeNode(7)
+
+def inorder(node):
+    if node is None:
+        return
+    inorder(node.left)
+    print(node.val)
+    inorder(node.right)
+
+inorder(root)
+`,
+    },
+    {
+        name: "BST Insert/Search",
+        category: "Trees",
+        code: `class TreeNode:
+    def __init__(self, val):
+        self.val = val
+        self.left = None
+        self.right = None
+
+def insert(node, val):
+    if node is None:
+        return TreeNode(val)
+    if val < node.val:
+        node.left = insert(node.left, val)
+    elif val > node.val:
+        node.right = insert(node.right, val)
+    return node
+
+def search(node, val):
+    if node is None:
+        return False
+    if val == node.val:
+        return True
+    return search(node.left, val) if val < node.val else search(node.right, val)
+
+root = None
+for v in [4, 2, 6, 1, 3, 5, 7]:
+    root = insert(root, v)
+print("Found 3:", search(root, 3))
+print("Found 8:", search(root, 8))
+`,
+    },
+    {
+        name: "Invert Binary Tree",
+        category: "Trees",
+        code: `class TreeNode:
+    def __init__(self, val):
+        self.val = val
+        self.left = None
+        self.right = None
+
+root = TreeNode(4)
+root.left = TreeNode(2)
+root.right = TreeNode(7)
+root.left.left = TreeNode(1)
+root.left.right = TreeNode(3)
+root.right.left = TreeNode(6)
+root.right.right = TreeNode(9)
+
+def invert(node):
+    if node is None:
+        return None
+    node.left, node.right = invert(node.right), invert(node.left)
+    return node
+
+root = invert(root)
+`,
+    },
+    {
+        name: "Longest Common Subsequence",
+        category: "Dynamic Programming",
+        code: `s1 = "ABCBDAB"
+s2 = "BDCAB"
+
+def lcs(s1, s2):
+    m, n = len(s1), len(s2)
+    dp = [[0] * (n + 1) for _ in range(m + 1)]
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if s1[i - 1] == s2[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1] + 1
+            else:
+                dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
+    return dp[m][n]
+
+print("LCS length:", lcs(s1, s2))
+`,
+    },
+    {
+        name: "0/1 Knapsack",
+        category: "Dynamic Programming",
+        code: `weights = [2, 3, 4, 5]
+values = [3, 4, 5, 6]
+capacity = 8
+
+def knapsack(weights, values, capacity):
+    n = len(weights)
+    dp = [[0] * (capacity + 1) for _ in range(n + 1)]
+    for i in range(1, n + 1):
+        for w in range(capacity + 1):
+            dp[i][w] = dp[i - 1][w]
+            if weights[i - 1] <= w:
+                dp[i][w] = max(dp[i][w], dp[i - 1][w - weights[i - 1]] + values[i - 1])
+    return dp[n][capacity]
+
+print("Max value:", knapsack(weights, values, capacity))
+`,
+    },
+    {
+        name: "N-Queens",
+        category: "Backtracking",
+        code: `n = 6
+queens = [-1] * n
+
+def is_safe(row, col):
+    for r in range(row):
+        if queens[r] == col or abs(queens[r] - col) == row - r:
+            return False
+    return True
+
+def solve(row):
+    if row == n:
+        return True
+    for col in range(n):
+        if is_safe(row, col):
+            queens[row] = col
+            if solve(row + 1):
+                return True
+            queens[row] = -1
+    return False
+
+solve(0)
+print(queens)
+`,
+    },
+    {
+        name: "Tower of Hanoi",
+        category: "Divide & Conquer",
+        code: `def hanoi(n, src, dst, aux):
+    if n == 0:
+        return
+    hanoi(n - 1, src, aux, dst)
+    print(f"Move disk {n} from {src} to {dst}")
+    hanoi(n - 1, aux, dst, src)
+
+hanoi(4, "A", "C", "B")
 `,
     },
 ];

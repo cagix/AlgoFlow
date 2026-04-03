@@ -135,21 +135,26 @@ export interface JavaEditorHandle {
     getProblem: () => Problem | null;
     selectProblem: (p: Problem) => void;
     getCode: () => string;
+    getLang: () => 'java' | 'python';
     run: () => void;
 }
 
-const JavaEditor = forwardRef<JavaEditorHandle, { mode?: string; onLoadingChange?: (loading: boolean) => void; onOpenSidebar?: () => void; onProblemsLoaded?: (problems: Problem[]) => void; readOnly?: boolean; initialCode?: string }>(function JavaEditor({ mode, onLoadingChange, onOpenSidebar, onProblemsLoaded, readOnly, initialCode }, ref) {
+const JavaEditor = forwardRef<JavaEditorHandle, { mode?: string; onLoadingChange?: (loading: boolean) => void; onOpenSidebar?: () => void; onProblemsLoaded?: (problems: Problem[]) => void; readOnly?: boolean; initialCode?: string; initialLanguage?: 'java' | 'python' }>(function JavaEditor({ mode, onLoadingChange, onOpenSidebar, onProblemsLoaded, readOnly, initialCode, initialLanguage }, ref) {
     const isPractice = mode === "practice";
 
     const [lang, setLang] = useState<'java' | 'python'>(() => {
-        if (isPractice) return 'java';
-        try { const v = localStorage.getItem(LANG_KEY); if (v === 'python') return 'python'; } catch {}
+        if (initialLanguage) return initialLanguage;
+        try { const v = localStorage.getItem(isPractice ? LANG_KEY + '-practice' : LANG_KEY); if (v === 'python') return 'python'; } catch {}
         return 'java';
     });
+    const langRef = useRef(lang);
+    langRef.current = lang;
 
     const [problems, setProblems] = useState<Problem[]>([]);
     const [, setProblemsError] = useState<string | null>(null);
     const [problem, setProblem] = useState<Problem | null>(null);
+    const problemRef = useRef(problem);
+    problemRef.current = problem;
 
     const [code, setCode] = useState(() => {
         if (initialCode) return initialCode;
@@ -179,7 +184,11 @@ const JavaEditor = forwardRef<JavaEditorHandle, { mode?: string; onLoadingChange
                 const savedId = localStorage.getItem(PROBLEM_KEY);
                 const saved = savedId ? list.find(p => p.id === Number(savedId)) : null;
                 const pick = saved ?? list[0] ?? null;
-                if (pick) { setProblem(pick); setCode(pick.starterCode); }
+                if (pick) {
+                    setProblem(pick);
+                    const curLang = langRef.current;
+                    setCode(curLang === 'python' ? (pick.starterCodePython || pick.starterCode) : pick.starterCode);
+                }
             } catch {}
         }).catch(e => setProblemsError(e.message));
     }, [isPractice]);
@@ -241,13 +250,14 @@ const JavaEditor = forwardRef<JavaEditorHandle, { mode?: string; onLoadingChange
 
     const selectProblem = (p: Problem) => {
         setProblem(p);
-        setCode(p.starterCode);
+        const curLang = langRef.current;
+        setCode(curLang === 'python' ? (p.starterCodePython || p.starterCode) : p.starterCode);
         reset();
-        setTimeout(foldMain, 100);
+        if (curLang === 'java') setTimeout(foldMain, 100);
         try { localStorage.setItem(PROBLEM_KEY, String(p.id)); } catch {}
     };
 
-    useImperativeHandle(ref, () => ({ getProblems: () => problems, getProblem: () => problem, selectProblem, getCode: () => code, run: () => runRef.current?.() }), [problems, problem, code]);
+    useImperativeHandle(ref, () => ({ getProblems: () => problems, getProblem: () => problem, selectProblem, getCode: () => code, getLang: () => langRef.current, run: () => runRef.current?.() }), [problems, problem, code]);
 
     const setLoadingState = (v: boolean) => { setLoading(v); onLoadingChange?.(v); };
 
@@ -258,17 +268,22 @@ const JavaEditor = forwardRef<JavaEditorHandle, { mode?: string; onLoadingChange
 
     const switchLang = (newLang: 'java' | 'python') => {
         if (newLang === lang) return;
-        // Save current code
-        try { localStorage.setItem(lang === 'python' ? CODE_KEY_PY : CODE_KEY, code); } catch {}
+        if (!isPractice) {
+            try { localStorage.setItem(lang === 'python' ? CODE_KEY_PY : CODE_KEY, code); } catch {}
+        }
         setLang(newLang);
-        try { localStorage.setItem(LANG_KEY, newLang); } catch {}
-        // Load saved code for new lang
-        try {
-            const key = newLang === 'python' ? CODE_KEY_PY : CODE_KEY;
-            const saved = localStorage.getItem(key);
-            setCode(saved || (newLang === 'python' ? DEFAULT_PYTHON_CODE : DEFAULT_JAVA_CODE));
-        } catch {
-            setCode(newLang === 'python' ? DEFAULT_PYTHON_CODE : DEFAULT_JAVA_CODE);
+        try { localStorage.setItem(isPractice ? LANG_KEY + '-practice' : LANG_KEY, newLang); } catch {}
+        const curProblem = problemRef.current;
+        if (isPractice && curProblem) {
+            setCode(newLang === 'python' ? (curProblem.starterCodePython || curProblem.starterCode) : curProblem.starterCode);
+        } else {
+            try {
+                const key = newLang === 'python' ? CODE_KEY_PY : CODE_KEY;
+                const saved = localStorage.getItem(key);
+                setCode(saved || (newLang === 'python' ? DEFAULT_PYTHON_CODE : DEFAULT_JAVA_CODE));
+            } catch {
+                setCode(newLang === 'python' ? DEFAULT_PYTHON_CODE : DEFAULT_JAVA_CODE);
+            }
         }
         reset();
     };
@@ -304,31 +319,31 @@ const JavaEditor = forwardRef<JavaEditorHandle, { mode?: string; onLoadingChange
         <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
             <style>{`.highlighted-line { background: rgba(255, 213, 79, 0.15); }`}</style>
 
-            {/* Toolbar — playground mode */}
-            {!isPractice && (
-                <div ref={menuRef} style={{
-                    padding: "6px 12px", backgroundColor: "var(--bg-elevated)",
-                    borderBottom: "1px solid var(--border)", display: "flex",
-                    justifyContent: "space-between", alignItems: "center", position: "relative",
-                }}>
-                    {/* Language toggle — left */}
-                    <div data-tour="language" style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--border)" }}>
-                        {([['java', '☕ Java'], ['python', '🐍 Python']] as const).map(([id, label]) => (
-                            <button
-                                key={id}
-                                onClick={() => switchLang(id)}
-                                style={{
-                                    padding: "4px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer",
-                                    border: "none", transition: "all 0.15s",
-                                    background: lang === id ? 'var(--accent)' : 'transparent',
-                                    color: lang === id ? '#fff' : 'var(--text-secondary)',
-                                }}
-                                onMouseEnter={e => { if (lang !== id) e.currentTarget.style.background = 'var(--bg-hover)'; }}
-                                onMouseLeave={e => { if (lang !== id) e.currentTarget.style.background = 'transparent'; }}
-                            >{label}</button>
-                        ))}
-                    </div>
-                    {/* Templates & Examples — right */}
+            {/* Toolbar */}
+            <div ref={menuRef} style={{
+                padding: "6px 12px", backgroundColor: "var(--bg-elevated)",
+                borderBottom: "1px solid var(--border)", display: "flex",
+                justifyContent: "space-between", alignItems: "center", position: "relative",
+            }}>
+                {/* Language toggle — left */}
+                <div data-tour="language" style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--border)" }}>
+                    {([['java', '☕ Java'], ['python', '🐍 Python']] as const).map(([id, label]) => (
+                        <button
+                            key={id}
+                            onClick={() => switchLang(id)}
+                            style={{
+                                padding: "4px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer",
+                                border: "none", transition: "all 0.15s",
+                                background: lang === id ? 'var(--accent)' : 'transparent',
+                                color: lang === id ? '#fff' : 'var(--text-secondary)',
+                            }}
+                            onMouseEnter={e => { if (lang !== id) e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                            onMouseLeave={e => { if (lang !== id) e.currentTarget.style.background = 'transparent'; }}
+                        >{label}</button>
+                    ))}
+                </div>
+                {/* Templates & Examples — playground only */}
+                {!isPractice && (
                     <div style={{ display: "flex", gap: 8 }}>
                         <div style={{ position: "relative" }}>
                             <button
@@ -394,8 +409,8 @@ const JavaEditor = forwardRef<JavaEditorHandle, { mode?: string; onLoadingChange
                             )}
                         </div>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
 
 
 

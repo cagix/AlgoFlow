@@ -4,7 +4,7 @@ import type { JavaEditorHandle } from "./JavaEditor";
 import AlgorithmVisualizerPane from "./visualizer/AlgorithmVisualizerPane";
 import Tour, { useTour } from "./Tour";
 import LandingPage from "./LandingPage";
-import { parseLessonFromURL, buildLessonURL } from "./lesson/lessonStore";
+import { parseLessonFromURL, buildLessonURL, detectLanguage } from "./lesson/lessonStore";
 import type { Lesson } from "./lesson/lessonStore";
 import { subscribe, getEngine } from "./visualizer/visualizerEngine";
 
@@ -69,7 +69,8 @@ export default function App() {
     const handleShare = useCallback(async () => {
         const code = editorRef.current?.getCode?.() ?? "";
         if (!code.trim()) return;
-        const lesson: Lesson = { code, annotations };
+        const language = editorRef.current?.getLang?.() ?? 'java';
+        const lesson: Lesson = { code, annotations, language };
         const url = await buildLessonURL(lesson);
         await navigator.clipboard.writeText(url);
         alert("Lesson URL copied to clipboard!");
@@ -216,7 +217,7 @@ export default function App() {
             {/* Main content */}
             {isMobile ? (
                 <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, position: 'relative' }}>
-                    <div data-tour="editor" style={{ height: "50%" }}><JavaEditor ref={editorRef} mode={mode} onLoadingChange={setExecuting} onOpenSidebar={() => setSidebarOpen(true)} onProblemsLoaded={onProblemsLoaded} readOnly={!!viewingLesson} initialCode={viewingLesson?.code} /></div>
+                    <div data-tour="editor" style={{ height: "50%" }}><JavaEditor ref={editorRef} mode={mode} onLoadingChange={setExecuting} onOpenSidebar={() => setSidebarOpen(true)} onProblemsLoaded={onProblemsLoaded} readOnly={!!viewingLesson} initialCode={viewingLesson?.code} initialLanguage={viewingLesson ? (viewingLesson.language ?? detectLanguage(viewingLesson.code)) : undefined} /></div>
                     <div style={{ height: 3, background: "var(--border)", flexShrink: 0 }} />
                     <div data-tour="visualizer" style={{ flex: 1, minHeight: 0 }}>
                         <AlgorithmVisualizerPane
@@ -243,7 +244,7 @@ export default function App() {
                 </div>
             ) : (
                 <div style={{ display: "flex", flex: 1, minHeight: 0, position: 'relative' }}>
-                    <div data-tour="editor" style={{ width: `${splitPercent}%` }}><JavaEditor ref={editorRef} mode={mode} onLoadingChange={setExecuting} onOpenSidebar={() => setSidebarOpen(true)} onProblemsLoaded={onProblemsLoaded} readOnly={!!viewingLesson} initialCode={viewingLesson?.code} /></div>
+                    <div data-tour="editor" style={{ width: `${splitPercent}%` }}><JavaEditor ref={editorRef} mode={mode} onLoadingChange={setExecuting} onOpenSidebar={() => setSidebarOpen(true)} onProblemsLoaded={onProblemsLoaded} readOnly={!!viewingLesson} initialCode={viewingLesson?.code} initialLanguage={viewingLesson ? (viewingLesson.language ?? detectLanguage(viewingLesson.code)) : undefined} /></div>
                     <div
                         onMouseDown={onMouseDown}
                         style={{

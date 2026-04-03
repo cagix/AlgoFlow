@@ -17,15 +17,18 @@ public class ProblemController {
 
     @GetMapping
     public List<Map<String, Object>> listProblems() {
-        return problemService.getAllProblems().stream().map(p -> Map.<String, Object>of(
-            "id", p.id(),
-            "title", p.title(),
-            "difficulty", p.difficulty(),
-            "category", p.category(),
-            "description", p.description(),
-            "examples", p.examples(),
-            "leetcodeUrl", p.leetcodeUrl(),
-            "starterCode", p.starterCode()
-        )).toList();
+        return problemService.getAllProblems().stream().map(p -> {
+            Map<String, Object> map = new java.util.LinkedHashMap<>();
+            map.put("id", p.id());
+            map.put("title", p.title());
+            map.put("difficulty", p.difficulty());
+            map.put("category", p.category());
+            map.put("description", p.description());
+            map.put("examples", p.examples());
+            map.put("leetcodeUrl", p.leetcodeUrl());
+            map.put("starterCode", p.starterCode());
+            map.put("starterCodePython", p.starterCodePython());
+            return map;
+        }).toList();
     }
 }
