@@ -12,6 +12,9 @@ public class LinkedListVisualizer implements Visualizer {
     private final String _nextField;
     private final Class<?> _nodeClass;
     private final Set<Object> _knownNodes = Collections.newSetFromMap(new IdentityHashMap<>());
+    private final List<Object> _orderedNodes = new ArrayList<>();
+    // Local variables that point to nodes of this list's type
+    private final Map<String, Object> _localHeads = new LinkedHashMap<>();
     private Object _rootOwner;
     private String _rootFieldName;
     private Object _head;
@@ -47,34 +50,60 @@ public class LinkedListVisualizer implements Visualizer {
         this._rootFieldName = fieldName;
     }
 
+    /**
+     * Called when a local variable is updated with a value matching our node class.
+     * Returns true if we consumed it.
+     */
+    public boolean onLocalUpdate(String varName, Object value) {
+        if (value != null && value.getClass() == _nodeClass) {
+            _localHeads.put(varName, value);
+            return true;
+        }
+        // If set to null, remove tracking
+        if (_localHeads.containsKey(varName)) {
+            _localHeads.remove(varName);
+            return true;
+        }
+        return false;
+    }
+
+    /** Called when a function returns — clear all local head tracking. */
+    public void clearLocals() {
+        _localHeads.clear();
+    }
+
     private void rebuild() {
-        _knownNodes.clear();
-        List<Object> values = walkValues();
+        // Collect all "head" pointers: the main head + any locals pointing to nodes
+        List<Object> heads = new ArrayList<>();
+        if (_head != null) heads.add(_head);
+        for (Object localHead : _localHeads.values()) {
+            if (localHead != null) heads.add(localHead);
+        }
+
+        // Walk from each head, collecting reachable nodes in order, deduplicating
+        Set<Object> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+        _orderedNodes.clear();
+        for (Object h : heads) {
+            Object node = h;
+            int limit = 1000;
+            while (node != null && limit-- > 0) {
+                if (seen.contains(node)) break;
+                seen.add(node);
+                _knownNodes.add(node);
+                _orderedNodes.add(node);
+                node = getNext(node);
+            }
+        }
+
+        List<Object> values = new ArrayList<>();
+        for (Object n : _orderedNodes) values.add(getNodeValue(n));
         _tracer.set(values);
         Tracer.delay();
     }
 
-    private List<Object> walkValues() {
-        List<Object> values = new ArrayList<>();
-        Object node = _head;
-        int limit = 1000;
-        while (node != null && limit-- > 0) {
-            _knownNodes.add(node);
-            values.add(getNodeValue(node));
-            node = getNext(node);
-            if (_knownNodes.contains(node)) break; // cycle guard
-        }
-        return values;
-    }
-
     private int indexOf(Object node) {
-        Object cur = _head;
-        int idx = 0;
-        int limit = 1000;
-        while (cur != null && limit-- > 0) {
-            if (cur == node) return idx;
-            cur = getNext(cur);
-            idx++;
+        for (int i = 0; i < _orderedNodes.size(); i++) {
+            if (_orderedNodes.get(i) == node) return i;
         }
         return -1;
     }
@@ -96,7 +125,6 @@ public class LinkedListVisualizer implements Visualizer {
             return;
         }
 
-        // val field read — select the node
         int idx = indexOf(owner);
         if (idx >= 0) {
             leaveLastVisited();
@@ -107,7 +135,6 @@ public class LinkedListVisualizer implements Visualizer {
     }
 
     public void onFieldSet(Object owner, String fieldName) {
-        // Head reassignment
         if (owner == _rootOwner && fieldName.equals(_rootFieldName)) {
             _head = getField(_rootOwner, _rootFieldName);
             rebuild();
@@ -127,7 +154,9 @@ public class LinkedListVisualizer implements Visualizer {
         }
 
         if (fieldName.equals(_nextField)) {
-            // Structural change — rebuild
+            // New node being linked in — add to known
+            Object next = getNext(owner);
+            if (next != null) _knownNodes.add(next);
             rebuild();
         }
     }

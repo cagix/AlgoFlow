@@ -154,6 +154,10 @@ public class VisualizerRegistry {
                     if (!tempTrees.isEmpty()) setLayout();
                 }
 
+                for (LinkedListVisualizer lv : _linkedListVisualizers) {
+                    lv.clearLocals();
+                }
+
                 highlightLine(getCallerCallerLineNumber());
             }
         } finally {
@@ -708,6 +712,14 @@ public class VisualizerRegistry {
         String variableName = LocalVariablesVisualizer.getSlotName(methodKey, slotIndex);
         if (variableName == null)
             return;
+
+        // Check if a linked list visualizer wants this local
+        for (LinkedListVisualizer lv : _linkedListVisualizers) {
+            if (lv.onLocalUpdate(variableName, value)) {
+                // Don't return — still register in locals panel below
+                break;
+            }
+        }
 
         if (VisualizerInitializer.registerLocalValue(variableName, value)) {
             return;
