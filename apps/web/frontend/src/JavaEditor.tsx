@@ -312,7 +312,7 @@ const JavaEditor = forwardRef<JavaEditorHandle, { mode?: string; onLoadingChange
                     justifyContent: "space-between", alignItems: "center", position: "relative",
                 }}>
                     {/* Language toggle — left */}
-                    <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--border)" }}>
+                    <div data-tour="language" style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--border)" }}>
                         {([['java', '☕ Java'], ['python', '🐍 Python']] as const).map(([id, label]) => (
                             <button
                                 key={id}

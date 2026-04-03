@@ -84,13 +84,13 @@ function AlgoPadLogo({ size = 28 }: { size?: number }) {
 
 function TypewriterCode({ onDone }: { onDone: () => void }) {
     const lines = [
-        'private int[] arr = {5, 3, 8, 1, 2};',
+        'def bubble_sort(arr):',
+        '    for i in range(len(arr)):',
+        '        for j in range(len(arr) - i - 1):',
+        '            if arr[j] > arr[j + 1]:',
+        '                arr[j], arr[j + 1] = arr[j + 1], arr[j]',
         '',
-        'void sort() {',
-        '    for (int i = 0; i < arr.length; i++)',
-        '        for (int j = 0; j < arr.length-i-1; j++)',
-        '            if (arr[j] > arr[j+1]) swap(j, j+1);',
-        '}',
+        'bubble_sort([5, 3, 8, 1, 9, 2, 7, 4, 6, 10, 12, 11])',
     ];
     const [displayed, setDisplayed] = useState("");
     const full = lines.join("\n");
@@ -111,11 +111,8 @@ function TypewriterCode({ onDone }: { onDone: () => void }) {
             border: "1px solid var(--border-light)", margin: 0, overflow: "hidden", minHeight: 140,
             whiteSpace: "pre-wrap", wordBreak: "break-word",
         }}>
-            <span style={{ color: "#569cd6" }}>class</span>{" "}
-            <span style={{ color: "#4ec9b0" }}>BubbleSort</span>{" {\n"}
             {displayed}
             <span style={{ animation: "blink 1s step-end infinite", color: "var(--accent)" }}>▎</span>
-            {"\n}"}
         </pre>
     );
 }
@@ -128,7 +125,7 @@ function AnimatedBars({ active }: { active: boolean }) {
         const ctx = canvas.getContext("2d")!;
         const dpr = window.devicePixelRatio || 1;
         let raf: number;
-        const values = [5, 3, 8, 1, 9, 2, 7, 4, 6];
+        const values = [5, 3, 8, 1, 9, 2, 7, 4, 6, 10, 12, 11];
         const targets = [...values].sort((a, b) => a - b);
         const current = values.map(v => v);
         const highlights = new Set<number>();

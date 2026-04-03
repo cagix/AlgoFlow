@@ -8,6 +8,7 @@ interface Step {
 }
 
 const PLAYGROUND_STEPS: Step[] = [
+    { target: "[data-tour='language']", title: "Language", body: "Switch between Java and Python here.", position: "bottom" },
     { target: "[data-tour='editor']", title: "Code Editor", body: "Write your code here. Common data structures are visualized automatically.", position: "right" },
     { target: "[data-tour='templates']", title: "Templates", body: "Quick-start templates for common data structures and patterns.", position: "bottom" },
     { target: "[data-tour='examples']", title: "Examples", body: "Pre-built algorithms — load one and hit Run to see it in action.", position: "bottom" },
