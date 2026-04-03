@@ -2,7 +2,7 @@
 
 Write algorithms in Java or Python — see them execute step by step. No SDKs, no manual tracing.
 
-**[Try it live →](https://algopad.up.railway.app/)**
+**[Try it live →](https://www.algopad.dev/)**
 
 <!-- Add a demo GIF/screenshot here: -->
 <!-- ![AlgoFlow Demo](docs/demo.gif) -->
