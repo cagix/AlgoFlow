@@ -191,16 +191,10 @@ export default function App() {
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <button
+                        className="btn btn-ghost"
                         onClick={startTour}
                         title="Show tour"
-                        style={{
-                            background: "none", border: "1px solid var(--border)", color: "var(--text-muted)",
-                            borderRadius: 4, width: 24, height: 24, fontSize: 12, cursor: "pointer",
-                            display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
-                            fontWeight: 600, transition: "all 0.15s",
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--border-light)"; e.currentTarget.style.color = "var(--text-secondary)"; }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-muted)"; }}
+                        style={{ padding: '4px 8px' }}
                     >?</button>
                     <a
                         href="https://github.com/vish-chan/AlgoFlow" target="_blank" rel="noopener noreferrer"

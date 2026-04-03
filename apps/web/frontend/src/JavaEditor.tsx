@@ -27,12 +27,6 @@ const dropdownItemStyle: React.CSSProperties = {
     transition: "background 0.1s",
 };
 
-const toolbarBtnStyle: React.CSSProperties = {
-    padding: "5px 12px", fontSize: 12, cursor: "pointer", fontWeight: 500,
-    background: "var(--bg-active)", color: "var(--text-secondary)",
-    border: "1px solid var(--border)", borderRadius: 4,
-    transition: "all 0.15s", display: "inline-flex", alignItems: "center", gap: 4,
-};
 
 export function ProblemSidebar({ problems, problem, onSelect, open, onClose }: { problems: Problem[]; problem: Problem | null; onSelect: (p: Problem) => void; open: boolean; onClose: () => void }) {
     const categories = getCategories(problems);
@@ -108,7 +102,7 @@ function ProblemDescription({ problem, onOpenList }: { problem: Problem; onOpenL
                 style={{ padding: "7px 12px", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", background: 'rgba(76,175,80,0.04)' }}
             >
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span data-tour="problems-btn" onClick={e => { e.stopPropagation(); onOpenList(); }} style={{ cursor: 'pointer', fontSize: 10, color: 'var(--accent)', background: 'rgba(76,175,80,0.1)', border: '1px solid var(--accent)', borderRadius: 3, padding: '2px 8px', fontWeight: 700, transition: 'all 0.15s' }}
+                    <span data-tour="problems-btn" className="btn" onClick={e => { e.stopPropagation(); onOpenList(); }} style={{ fontSize: 10, color: 'var(--accent)', background: 'rgba(76,175,80,0.1)', borderColor: 'var(--accent)', padding: '2px 8px' }}
                         onMouseEnter={e => { e.currentTarget.style.background = 'rgba(76,175,80,0.2)'; }}
                         onMouseLeave={e => { e.currentTarget.style.background = 'rgba(76,175,80,0.1)'; }}
                     >☰ Problems</span>
@@ -116,7 +110,7 @@ function ProblemDescription({ problem, onOpenList }: { problem: Problem; onOpenL
                     <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 12 }}>{problem.id}. {problem.title}</span>
                     <span style={{ fontSize: 10, color: DIFF_COLORS[problem.difficulty], fontWeight: 700, border: `1px solid ${DIFF_COLORS[problem.difficulty]}`, padding: '0px 5px', borderRadius: 3 }}>{problem.difficulty}</span>
                 </div>
-                <a href={problem.leetcodeUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: 10, color: "var(--warning)", textDecoration: "none", border: "1px solid var(--warning)", padding: "1px 6px", borderRadius: 3, fontWeight: 700 }}>LeetCode ↗</a>
+                <a href={problem.leetcodeUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="btn" style={{ fontSize: 10, color: 'var(--warning)', borderColor: 'var(--warning)', padding: '1px 6px', textDecoration: 'none' }}>LeetCode ↗</a>
             </div>
             {!collapsed && (
                 <div style={{ padding: "10px 14px", maxHeight: 180, overflow: "auto", background: 'rgba(76,175,80,0.02)' }}>
@@ -326,19 +320,12 @@ const JavaEditor = forwardRef<JavaEditorHandle, { mode?: string; onLoadingChange
                 justifyContent: "space-between", alignItems: "center", position: "relative",
             }}>
                 {/* Language toggle — left */}
-                <div data-tour="language" style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--border)" }}>
+                <div data-tour="language" className="lang-toggle">
                     {([['java', '☕ Java'], ['python', '🐍 Python']] as const).map(([id, label]) => (
                         <button
                             key={id}
+                            className={lang === id ? 'active' : ''}
                             onClick={() => switchLang(id)}
-                            style={{
-                                padding: "4px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer",
-                                border: "none", transition: "all 0.15s",
-                                background: lang === id ? 'var(--accent)' : 'transparent',
-                                color: lang === id ? '#fff' : 'var(--text-secondary)',
-                            }}
-                            onMouseEnter={e => { if (lang !== id) e.currentTarget.style.background = 'var(--bg-hover)'; }}
-                            onMouseLeave={e => { if (lang !== id) e.currentTarget.style.background = 'transparent'; }}
                         >{label}</button>
                     ))}
                 </div>
@@ -347,11 +334,9 @@ const JavaEditor = forwardRef<JavaEditorHandle, { mode?: string; onLoadingChange
                     <div style={{ display: "flex", gap: 8 }}>
                         <div style={{ position: "relative" }}>
                             <button
+                                className="btn"
                                 data-tour="templates"
                                 onClick={() => setMenuOpen(menuOpen === 'templates' ? null : 'templates')}
-                                style={toolbarBtnStyle}
-                                onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--border-light)"; e.currentTarget.style.color = "var(--text-primary)"; }}
-                                onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-secondary)"; }}
                             >
                                 📝 Templates <span style={{ fontSize: 10, opacity: 0.5 }}>▾</span>
                             </button>
@@ -379,11 +364,9 @@ const JavaEditor = forwardRef<JavaEditorHandle, { mode?: string; onLoadingChange
                         </div>
                         <div style={{ position: "relative" }}>
                             <button
+                                className="btn"
                                 data-tour="examples"
                                 onClick={() => setMenuOpen(menuOpen === 'algorithms' ? null : 'algorithms')}
-                                style={toolbarBtnStyle}
-                                onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--border-light)"; e.currentTarget.style.color = "var(--text-primary)"; }}
-                                onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-secondary)"; }}
                             >
                                 📚 Examples <span style={{ fontSize: 10, opacity: 0.5 }}>▾</span>
                             </button>
@@ -446,16 +429,9 @@ const JavaEditor = forwardRef<JavaEditorHandle, { mode?: string; onLoadingChange
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         {!isPractice && (
                             <button
+                                className="btn btn-ghost"
                                 onClick={() => { persistCode(defaultCode); reset(); }}
                                 title="Reset editor"
-                                style={{
-                                    fontSize: 11, color: "var(--text-muted)", background: "transparent",
-                                    border: "1px solid var(--border)", borderRadius: 4,
-                                    padding: "3px 8px", fontWeight: 600, cursor: "pointer",
-                                    transition: "all 0.15s",
-                                }}
-                                onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--border-light)"; e.currentTarget.style.color = "var(--text-secondary)"; }}
-                                onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-muted)"; }}
                             >
                                 ↺ Reset
                             </button>
@@ -465,19 +441,11 @@ const JavaEditor = forwardRef<JavaEditorHandle, { mode?: string; onLoadingChange
                         </span>
                     </div>
                     <button
+                        className={`btn btn-accent btn-run`}
                         data-tour="run"
                         onClick={handleRun}
                         disabled={loading}
                         title={`Run (${isMac ? '⌘' : 'Ctrl'}+Enter)`}
-                        style={{
-                            padding: "6px 20px", fontSize: 13, cursor: loading ? "not-allowed" : "pointer",
-                            background: loading ? 'var(--border-light)' : 'var(--accent)', color: '#fff',
-                            border: 'none', borderRadius: 5, fontWeight: 600,
-                            transition: 'all 0.15s',
-                            boxShadow: loading ? 'none' : '0 2px 8px rgba(76,175,80,0.2)',
-                        }}
-                        onMouseEnter={e => { if (!loading) e.currentTarget.style.background = 'var(--accent-hover)'; }}
-                        onMouseLeave={e => { if (!loading) e.currentTarget.style.background = loading ? 'var(--border-light)' : 'var(--accent)'; }}
                     >
                         {loading ? "Running…" : "▶ Run"}
                     </button>
