@@ -831,6 +831,10 @@ public class VisualizerRegistry {
         for (LinkedListVisualizer lv : _linkedListVisualizers) {
             if (lv.getNodeClass() == clazz) return false;
         }
+        // Already tracked by a tree visualizer?
+        for (TreeVisualizer tv : _treeVisualizers) {
+            if (tv.getNodeClass() == clazz) return false;
+        }
         // Check if it looks like a linked list node: at least one self-referential field + one value field
         int selfRefCount = 0;
         boolean hasValue = false;
