@@ -298,7 +298,12 @@ export class SimpleEngine {
                 const n = parseInt(String(args[0]));
                 if (!isNaN(n)) this.highlightedLine = n;
             } else if (this.tracers[key]?.type === 'log') {
-                this.tracers[key].logs.push(args[0]);
+                const logs = this.tracers[key].logs;
+                if (logs.length > 0 && !logs[logs.length - 1].endsWith('\n')) {
+                    logs[logs.length - 1] += args[0];
+                } else {
+                    logs.push(args[0]);
+                }
                 this.updateRenderer();
             }
         } else if (key !== null && method === 'println') {
@@ -306,7 +311,12 @@ export class SimpleEngine {
                 const n = parseInt(String(args[0]));
                 if (!isNaN(n)) this.highlightedLine = n;
             } else if (this.tracers[key]?.type === 'log') {
-                this.tracers[key].logs.push(args[0] + '\n');
+                const logs = this.tracers[key].logs;
+                if (logs.length > 0 && !logs[logs.length - 1].endsWith('\n')) {
+                    logs[logs.length - 1] += args[0] + '\n';
+                } else {
+                    logs.push(args[0] + '\n');
+                }
                 this.updateRenderer();
             }
         } else if (key !== null && method === 'push') {
