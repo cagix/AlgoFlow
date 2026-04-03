@@ -714,11 +714,17 @@ public class VisualizerRegistry {
             return;
 
         // Check if a linked list visualizer wants this local
+        boolean consumedByLL = false;
         for (LinkedListVisualizer lv : _linkedListVisualizers) {
             if (lv.onLocalUpdate(variableName, value)) {
-                // Don't return — still register in locals panel below
+                consumedByLL = true;
                 break;
             }
+        }
+
+        // If no existing LL visualizer claimed it, try auto-registering as a new linked list
+        if (!consumedByLL && value != null) {
+            consumedByLL = tryAutoRegisterLinkedList(variableName, value);
         }
 
         if (VisualizerInitializer.registerLocalValue(variableName, value)) {
@@ -729,6 +735,28 @@ public class VisualizerRegistry {
 
         ensureLocalVariablesVisualizer();
         _localVariablesVisualizer.onVariableUpdate(variableName, value);
+    }
+
+    private static boolean tryAutoRegisterLinkedList(String varName, Object value) {
+        if (value == null) return false;
+        Class<?> clazz = value.getClass();
+        // Already tracked by an existing LL visualizer?
+        for (LinkedListVisualizer lv : _linkedListVisualizers) {
+            if (lv.getNodeClass() == clazz) return false;
+        }
+        // Check if it looks like a linked list node: at least one self-referential field + one value field
+        int selfRefCount = 0;
+        boolean hasValue = false;
+        for (java.lang.reflect.Field f : clazz.getDeclaredFields()) {
+            if (java.lang.reflect.Modifier.isStatic(f.getModifiers())) continue;
+            if (f.getType() == clazz) selfRefCount++;
+            else hasValue = true;
+        }
+        if (selfRefCount == 0 || !hasValue) return false;
+        LinkedListVisualizer vis = new LinkedListVisualizer(varName, value, clazz);
+        registerLinkedList(vis);
+        setLayout();
+        return true;
     }
 
     private static GraphVisualizer findParentGraph(Object subarray) {
