@@ -6,6 +6,8 @@ export type RecordingState = 'idle' | 'recording' | 'encoding';
 const listeners = new Set<(state: RecordingState) => void>();
 let state: RecordingState = 'idle';
 
+let cancelled = false;
+
 function setState(s: RecordingState) {
     state = s;
     listeners.forEach(l => l(s));
@@ -27,6 +29,7 @@ export async function recordGif(
     if (!container || state !== 'idle') return;
 
     setState('recording');
+    cancelled = false;
 
     const frames: { data: ImageData; delay: number }[] = [];
 
@@ -51,7 +54,7 @@ export async function recordGif(
     await capture();
 
     // Step through and capture each frame
-    while (state === 'recording' && stepFn()) {
+    while (!cancelled && stepFn()) {
         await new Promise(r => setTimeout(r, 50)); // small pause for render
         await capture();
     }
@@ -92,5 +95,5 @@ export async function recordGif(
 }
 
 export function cancelRecording() {
-    if (state === 'recording') setState('idle');
+    cancelled = true;
 }
