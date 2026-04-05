@@ -623,7 +623,7 @@ export class SimpleRenderer {
                 this.ctx.font = `${Math.min(11, barW - 2)}px monospace`;
                 this.ctx.textAlign = 'center';
                 this.ctx.textBaseline = 'bottom';
-                this.ctx.fillText(String(value), bx + barW / 2, by - 2);
+                this.ctx.fillText(this.truncateText(String(value), barW - 2), bx + barW / 2, by - 2);
             }
 
             this.tooltipRegions.push({ x: bx, y: by, w: barW, h: barH, text: `[${i}] = ${value}` });
@@ -669,7 +669,7 @@ export class SimpleRenderer {
             this.ctx!.font = valFont;
             this.ctx!.textAlign = 'center';
             this.ctx!.textBaseline = 'middle';
-            this.ctx!.fillText(String(value), cx + cellWidth / 2, startY + cellHeight / 2);
+            this.ctx!.fillText(this.truncateText(String(value), cellWidth - 8), cx + cellWidth / 2, startY + cellHeight / 2);
             this.tooltipRegions.push({ x: cx + 2, y: startY, w: cellWidth - 4, h: cellHeight, text: `[${i}] = ${value}` });
             this.ctx!.fillStyle = theme.text.secondary;
             this.ctx!.font = `${large ? 12 : 10}px monospace`;
@@ -806,7 +806,7 @@ export class SimpleRenderer {
             this.ctx!.font = '14px monospace';
             this.ctx!.textAlign = 'center';
             this.ctx!.textBaseline = 'middle';
-            this.ctx!.fillText(String(value), cx + cellWidth / 2, startY + cellHeight / 2);
+            this.ctx!.fillText(this.truncateText(String(value), cellWidth - 8), cx + cellWidth / 2, startY + cellHeight / 2);
             this.tooltipRegions.push({ x: cx + 2, y: startY, w: cellWidth - 4, h: cellHeight, text: `[${i}] = ${value}` });
 
             if (i === topIdx) {
@@ -1327,14 +1327,17 @@ export class SimpleRenderer {
         const isNull = (idx: number) => String(labels[idx] ?? '').startsWith('null_');
 
         // Draw edges (skip edges to/from null sentinel nodes)
+        // Collect weight labels to draw after all edges so they aren't covered
+        const weightLabels: { x: number; y: number; text: string }[] = [];
+
         if (directed) {
             if (layout === 'tree' && edges?.length) {
-                // For tree layout, draw from edges array to support duplicate edges
                 for (const [from, to] of edges) {
                     if (isNull(from) || isNull(to)) continue;
                     const a = Math.min(from, to), b = Math.max(from, to);
                     const visited = edgeSet.has(`${a}-${b}`);
-                    this.drawDirectedEdge(pos[from], pos[to], nr, visited, 0, weighted ? (adjMatrix[from]?.[to] || 0) : 0);
+                    const wl = this.drawDirectedEdge(pos[from], pos[to], nr, visited, 0, weighted ? (adjMatrix[from]?.[to] || 0) : 0);
+                    if (wl) weightLabels.push(wl);
                 }
             } else {
                 for (let i = 0; i < n; i++) {
@@ -1344,7 +1347,24 @@ export class SimpleRenderer {
                         const a = Math.min(i, j), b = Math.max(i, j);
                         const visited = edgeSet.has(`${a}-${b}`);
                         const bidir = !!(adjMatrix[j]?.[i]);
-                        this.drawDirectedEdge(pos[i], pos[j], nr, visited, bidir ? (i < j ? 1 : -1) : 0, weighted ? adjMatrix[i][j] : 0);
+                        const curveVal = bidir ? (i < j ? 1 : -1) : 0;
+                        const w = weighted ? adjMatrix[i][j] : 0;
+                        // For bidirectional edges, compute a canonical perpendicular so curves go opposite ways
+                        let bulgeDir: { nx: number; ny: number } | undefined;
+                        if (bidir) {
+                            const cdx = pos[b].x - pos[a].x, cdy = pos[b].y - pos[a].y;
+                            const cd = Math.sqrt(cdx * cdx + cdy * cdy) || 1;
+                            bulgeDir = { nx: -cdy / cd, ny: cdx / cd };
+                        }
+                        const wl = this.drawDirectedEdge(pos[i], pos[j], nr, visited, curveVal, w, bulgeDir);
+                        if (wl && bidir) {
+                            const mx = (pos[a].x + pos[b].x) / 2;
+                            const my = (pos[a].y + pos[b].y) / 2;
+                            const sign = i < j ? 1 : -1;
+                            wl.x = mx + bulgeDir!.nx * sign * 35;
+                            wl.y = my + bulgeDir!.ny * sign * 35;
+                        }
+                        if (wl) weightLabels.push(wl);
                     }
                 }
             }
@@ -1363,11 +1383,7 @@ export class SimpleRenderer {
                     this.ctx.lineTo(pos[j].x, pos[j].y);
                     this.ctx.stroke();
                     if (weighted && w !== 1) {
-                        this.ctx.fillStyle = theme.status.weight;
-                        this.ctx.font = '10px sans-serif';
-                        this.ctx.textAlign = 'center';
-                        this.ctx.textBaseline = 'middle';
-                        this.ctx.fillText(String(w), (pos[i].x + pos[j].x) / 2, (pos[i].y + pos[j].y) / 2 - 8);
+                        weightLabels.push({ x: (pos[i].x + pos[j].x) / 2, y: (pos[i].y + pos[j].y) / 2 - 8, text: String(w) });
                     }
                 }
             }
@@ -1393,6 +1409,20 @@ export class SimpleRenderer {
             this.ctx.textBaseline = 'middle';
             this.ctx.fillText(this.truncateText(label, nr * 2 - 4), pos[i].x, pos[i].y);
             this.tooltipRegions.push({ x: pos[i].x - nr, y: pos[i].y - nr, w: nr * 2, h: nr * 2, text: label });
+        }
+
+        // Draw weight labels on top of everything
+        for (const wl of weightLabels) {
+            this.ctx.font = 'bold 10px sans-serif';
+            const tw = this.ctx.measureText(wl.text).width;
+            this.ctx.fillStyle = theme.bg.elevated;
+            this.ctx.beginPath();
+            this.ctx.roundRect(wl.x - tw / 2 - 4, wl.y - 7, tw + 8, 14, 3);
+            this.ctx.fill();
+            this.ctx.fillStyle = theme.status.weight;
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText(wl.text, wl.x, wl.y);
         }
 
     }
@@ -1480,11 +1510,11 @@ export class SimpleRenderer {
         return pos;
     }
 
-    private drawDirectedEdge(from: { x: number; y: number }, to: { x: number; y: number }, nr: number, visited: boolean, curve: number, weight: number) {
-        if (!this.ctx) return;
+    private drawDirectedEdge(from: { x: number; y: number }, to: { x: number; y: number }, nr: number, visited: boolean, curve: number, weight: number, bulgeOverride?: { nx: number; ny: number }): { x: number; y: number; text: string } | null {
+        if (!this.ctx) return null;
         const dx = to.x - from.x, dy = to.y - from.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist === 0) return;
+        if (dist === 0) return null;
         const ux = dx / dist, uy = dy / dist;
 
         // Shorten to node edges
@@ -1494,10 +1524,12 @@ export class SimpleRenderer {
         this.ctx.strokeStyle = visited ? theme.accent.default : theme.text.muted;
         this.ctx.lineWidth = visited ? 2.5 : 1;
 
-        const bulge = curve * 20;
+        const bulge = curve * 30;
         const nx = -uy, ny = ux; // perpendicular
-        const cpx = (sx + ex) / 2 + nx * bulge;
-        const cpy = (sy + ey) / 2 + ny * bulge;
+        const bnx = bulgeOverride ? bulgeOverride.nx : nx;
+        const bny = bulgeOverride ? bulgeOverride.ny : ny;
+        const cpx = (sx + ex) / 2 + bnx * bulge;
+        const cpy = (sy + ey) / 2 + bny * bulge;
 
         this.ctx.beginPath();
         if (curve !== 0) {
@@ -1520,7 +1552,7 @@ export class SimpleRenderer {
             ax = ux; ay = uy;
         }
         const alen = Math.sqrt(ax * ax + ay * ay);
-        if (alen === 0) return;
+        if (alen === 0) return null;
         ax /= alen; ay /= alen;
         const arrowLen = 8;
         this.ctx.fillStyle = visited ? theme.accent.default : theme.text.muted;
@@ -1531,16 +1563,16 @@ export class SimpleRenderer {
         this.ctx.closePath();
         this.ctx.fill();
 
-        // Weight label
+        // Weight label — return position for deferred rendering
         if (weight && weight !== 1) {
-            const lx = curve !== 0 ? cpx : (sx + ex) / 2;
-            const ly = (curve !== 0 ? cpy : (sy + ey) / 2) - 8;
-            this.ctx.fillStyle = theme.status.weight;
-            this.ctx.font = '10px sans-serif';
-            this.ctx.textAlign = 'center';
-            this.ctx.textBaseline = 'middle';
-            this.ctx.fillText(String(weight), lx, ly);
+            if (curve !== 0) {
+                return { x: cpx, y: cpy, text: String(weight) };
+            }
+            const mx = (from.x + to.x) / 2;
+            const my = (from.y + to.y) / 2;
+            return { x: mx, y: my - 8, text: String(weight) };
         }
+        return null;
     }
 
     private renderRecursion(calls: any[], title?: string) {
