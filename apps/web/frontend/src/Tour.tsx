@@ -173,9 +173,13 @@ export default function Tour({ mode, onFinish }: { mode: string; onFinish: () =>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <button
                         onClick={skip}
-                        style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: 11, cursor: "pointer", padding: 0 }}
+                        style={{
+                            background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
+                            color: "var(--text-secondary)", fontSize: 11, cursor: "pointer",
+                            padding: "4px 10px", borderRadius: 4,
+                        }}
                     >
-                        Skip tour
+                        Skip
                     </button>
                     <button
                         onClick={next}

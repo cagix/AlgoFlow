@@ -326,6 +326,7 @@ const JavaEditor = forwardRef<JavaEditorHandle, { mode?: string; onLoadingChange
                             key={id}
                             className={lang === id ? 'active' : ''}
                             onClick={() => switchLang(id)}
+                            title={`Switch to ${id === 'java' ? 'Java' : 'Python'}`}
                         >{label}</button>
                     ))}
                 </div>
@@ -337,6 +338,7 @@ const JavaEditor = forwardRef<JavaEditorHandle, { mode?: string; onLoadingChange
                                 className="btn"
                                 data-tour="templates"
                                 onClick={() => setMenuOpen(menuOpen === 'templates' ? null : 'templates')}
+                                title="Code templates for common data structures"
                             >
                                 📝 Templates <span style={{ fontSize: 10, opacity: 0.5 }}>▾</span>
                             </button>
@@ -367,6 +369,7 @@ const JavaEditor = forwardRef<JavaEditorHandle, { mode?: string; onLoadingChange
                                 className="btn"
                                 data-tour="examples"
                                 onClick={() => setMenuOpen(menuOpen === 'algorithms' ? null : 'algorithms')}
+                                title="Pre-built algorithm examples"
                             >
                                 📚 Examples <span style={{ fontSize: 10, opacity: 0.5 }}>▾</span>
                             </button>

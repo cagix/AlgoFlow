@@ -49,13 +49,12 @@ export default function LessonAnnotation({ step, total, value, annotationCount, 
                 </div>
                 <button
                     onClick={onShare}
-                    disabled={annotationCount === 0}
+                    title="Copy shareable lesson URL to clipboard"
                     style={{
-                        fontSize: 11, fontWeight: 600, cursor: annotationCount > 0 ? "pointer" : "not-allowed",
-                        background: annotationCount > 0 ? "var(--accent)" : "var(--border)",
+                        fontSize: 11, fontWeight: 600, cursor: "pointer",
+                        background: "var(--accent)",
                         color: "#fff", border: "none", borderRadius: 4,
                         padding: "4px 12px", transition: "all 0.15s",
-                        opacity: annotationCount > 0 ? 1 : 0.5,
                     }}
                 >
                     🔗 Share Lesson

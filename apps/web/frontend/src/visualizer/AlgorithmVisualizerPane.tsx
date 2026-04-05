@@ -47,7 +47,7 @@ export default function AlgorithmVisualizerPane({ loading, annotating, onAnnotat
             <Controls
                 annotating={annotating}
                 onAnnotatingChange={onAnnotatingChange}
-                onShare={!annotating && annotationCount > 0 ? onShare : undefined}
+                onShare={!annotating ? onShare : undefined}
                 annotations={annotations}
             />
             {loading && (
