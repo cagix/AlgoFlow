@@ -2,6 +2,7 @@ package com.algoflow.visualiser;
 
 import org.algorithm_visualizer.Commander;
 import org.algorithm_visualizer.Layout;
+import org.algorithm_visualizer.Tracer;
 import org.algorithm_visualizer.VerticalLayout;
 
 import java.util.*;
@@ -915,6 +916,7 @@ public class VisualizerRegistry {
         allCommanders.add(_logVisualizer.getCommander());
 
         Layout.setRoot(new VerticalLayout(allCommanders.toArray(Commander[]::new)));
+        Tracer.delay();
     }
 
     private static ListVisualizer findVisualizer(Object object) {
